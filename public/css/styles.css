@@ -1,0 +1,76 @@
+/* Market status indicators */
+.market-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.market-open {
+  background-color: rgba(25, 135, 84, 0.1);
+  color: #198754;
+}
+
+.market-closed {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.market-unknown {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+/* Last refreshed time */
+.last-refreshed-time {
+  font-weight: 500;
+}
+
+/* Auto-refresh toggle */
+.form-switch .form-check-input {
+  width: 2.5em;
+}
+
+.form-check-label {
+  font-size: 0.85rem;
+}
+
+/* Portfolio Summary Styles */
+.card-header.bg-primary {
+  background-color: #0d6efd !important;
+}
+
+#cash-balance, #total-invested, #total-value, #total-portfolio-value, #total-gain-loss {
+  font-weight: 600;
+}
+
+#total-gain-loss.text-success, #total-gain-loss-percent.text-success {
+  color: #198754 !important;
+}
+
+#total-gain-loss.text-danger, #total-gain-loss-percent.text-danger {
+  color: #dc3545 !important;
+}
+
+/* Table Styles */
+.table th {
+  font-weight: 600;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+  .col-md-3 {
+    margin-bottom: 1rem;
+  }
+  
+  .col-md-3:last-child {
+    text-align: left;
+  }
+} 
