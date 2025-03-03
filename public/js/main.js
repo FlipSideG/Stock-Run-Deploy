@@ -1122,69 +1122,45 @@ function toggleMockPrices() {
   refreshPrices(true);
 }
 
-// Function to refresh stock prices
-async function refreshPrices(showAlert = true) {
-  try {
-    console.log('[Frontend] Refreshing stock prices...');
-    
-    const response = await fetch('/api/refresh-prices', {
-      method: 'POST'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to refresh prices');
-    }
-    
-    const result = await response.json();
-    
-    console.log('[Frontend] Prices refreshed:', result);
-    
-    // Reload trades to show updated prices
-    await loadTrades();
-    
-    // Update last refreshed time
-    updateLastRefreshedTime();
-    
-    if (showAlert) {
-      alert('Prices refreshed successfully');
-    }
-    
-  } catch (error) {
-    console.error('[Frontend] Error refreshing prices:', error);
-    if (showAlert) {
-      alert(`Error refreshing prices: ${error.message}`);
-    }
-  }
-}
-
-// Function to update the last refreshed time
-function updateLastRefreshedTime() {
-  const now = new Date();
-  const timeString = now.toLocaleTimeString();
-  
-  const elements = document.querySelectorAll('.last-refreshed-time');
-  elements.forEach(element => {
-    element.textContent = timeString;
-  });
-}
-
-// Auto-refresh variables
+// Auto-refresh configuration
+const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
+const MIN_REFRESH_INTERVAL = 60000;   // 1 minute minimum between manual refreshes
+let lastRefreshTime = 0;
 let autoRefreshInterval = null;
-const AUTO_REFRESH_INTERVAL = 60000; // 1 minute
+let isRefreshing = false;
 
 // Function to start auto-refresh
 function startAutoRefresh() {
   console.log('[Frontend] Starting auto-refresh');
   
-  // Clear any existing interval
   if (autoRefreshInterval) {
     clearInterval(autoRefreshInterval);
   }
   
-  // Set up new interval
-  autoRefreshInterval = setInterval(() => {
-    console.log('[Frontend] Auto-refreshing prices...');
-    refreshPrices(false);
+  // Set up new interval with error handling
+  autoRefreshInterval = setInterval(async () => {
+    try {
+      // Prevent multiple concurrent refreshes
+      if (isRefreshing) {
+        console.log('[Frontend] Skipping refresh - previous refresh still in progress');
+        return;
+      }
+
+      // Check if market is closed before refreshing
+      const marketStatus = await checkMarketStatus();
+      if (!marketStatus.isOpen) {
+        console.log('[Frontend] Market is closed, skipping auto-refresh');
+        return;
+      }
+
+      console.log('[Frontend] Auto-refreshing prices...');
+      isRefreshing = true;
+      await refreshPrices(false);
+    } catch (error) {
+      console.error('[Frontend] Auto-refresh error:', error);
+    } finally {
+      isRefreshing = false;
+    }
   }, AUTO_REFRESH_INTERVAL);
 }
 
@@ -1207,6 +1183,71 @@ function toggleAutoRefresh(event) {
   } else {
     stopAutoRefresh();
   }
+}
+
+// Modified refreshPrices function to include rate limiting
+async function refreshPrices(showAlert = true) {
+  try {
+    // Check if enough time has passed since last refresh
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime;
+    
+    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+      const waitTime = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000);
+      console.log(`[Frontend] Please wait ${waitTime} seconds before refreshing again`);
+      if (showAlert) {
+        alert(`Please wait ${waitTime} seconds before refreshing again`);
+      }
+      return;
+    }
+
+    // Update last refresh time
+    lastRefreshTime = now;
+
+    // Show loading state
+    const refreshButton = document.getElementById('refresh-prices');
+    if (refreshButton) {
+      refreshButton.disabled = true;
+      refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
+    }
+
+    // Load trades and update UI
+    await loadTrades();
+    updateLastRefreshedTime();
+
+    // Reset button state
+    if (refreshButton) {
+      refreshButton.disabled = false;
+      refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Prices';
+    }
+
+    if (showAlert) {
+      alert('Prices refreshed successfully!');
+    }
+  } catch (error) {
+    console.error('[Frontend] Error refreshing prices:', error);
+    if (showAlert) {
+      alert('Error refreshing prices. Please try again later.');
+    }
+    
+    // Reset button state on error
+    const refreshButton = document.getElementById('refresh-prices');
+    if (refreshButton) {
+      refreshButton.disabled = false;
+      refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Prices';
+    }
+  }
+}
+
+// Function to update the last refreshed time
+function updateLastRefreshedTime() {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString();
+  
+  const elements = document.querySelectorAll('.last-refreshed-time');
+  elements.forEach(element => {
+    element.textContent = timeString;
+  });
 }
 
 // Function to update portfolio summary
