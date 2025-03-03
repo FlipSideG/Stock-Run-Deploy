@@ -38,16 +38,13 @@ const client = new MongoClient(uri, {
   socketTimeoutMS: 45000,       // 45 seconds
   waitQueueTimeoutMS: 30000,    // 30 seconds
   heartbeatFrequencyMS: 10000,
-  keepAlive: true,
   retryWrites: true,
   retryReads: true,
   serverSelectionTimeoutMS: 30000,
   maxIdleTimeMS: 30000,
   w: 'majority',                // Ensures write consistency
   readPreference: 'primary',    // Ensures read consistency
-  useUnifiedTopology: true,     // Uses the new topology engine
-  compressors: ['zlib'],        // Enable compression
-  zlibCompressionLevel: 6       // Moderate compression level
+  useUnifiedTopology: true     // Uses the new topology engine
 });
 
 let db;
