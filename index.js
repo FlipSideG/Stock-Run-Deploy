@@ -26,25 +26,26 @@ app.set('view engine', 'ejs');
 
 // MongoDB Connection
 const uri = process.env.MONGODB_URI || "mongodb+srv://Rick:Rick@stock-run.ts0bc.mongodb.net/finance-portfolio?retryWrites=true&w=majority";
+
+// Log connection string (without credentials)
+console.log('MongoDB Connection URI:', uri.replace(/(mongodb\+srv:\/\/)[^@]+@/, '$1*****@'));
+
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
-  maxPoolSize: 10,               // Reduced to prevent overwhelming the free tier
-  minPoolSize: 1,               // Reduced to save resources
-  connectTimeoutMS: 30000,      // 30 seconds
-  socketTimeoutMS: 45000,       // 45 seconds
-  waitQueueTimeoutMS: 30000,    // 30 seconds
+  maxPoolSize: 1,                // Reduced to minimum for free tier
+  minPoolSize: 0,                // No minimum pool for free tier
+  connectTimeoutMS: 30000,       // 30 seconds
+  socketTimeoutMS: 45000,        // 45 seconds
+  serverSelectionTimeoutMS: 30000,// 30 seconds
   heartbeatFrequencyMS: 10000,
   retryWrites: true,
   retryReads: true,
-  serverSelectionTimeoutMS: 30000,
-  maxIdleTimeMS: 30000,
-  w: 'majority',                // Ensures write consistency
-  readPreference: 'primary',    // Ensures read consistency
-  useUnifiedTopology: true     // Uses the new topology engine
+  w: 1,                         // Basic write concern
+  readPreference: 'primary'     // Read from primary only
 });
 
 let db;
@@ -56,20 +57,25 @@ async function connectToMongoDB() {
     return;
   }
 
-  const maxRetries = 3;  // Reduced number of retries
+  const maxRetries = 5;  // Increased retries
   let retryCount = 0;
 
   while (retryCount < maxRetries) {
     try {
       console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries})...`);
       await client.connect();
-      db = client.db(process.env.MONGODB_DB || "finance-portfolio");
       
-      // Test the connection with a timeout
+      // Get database name from environment or default
+      const dbName = process.env.MONGODB_DB || "finance-portfolio";
+      console.log(`Using database: ${dbName}`);
+      
+      db = client.db(dbName);
+      
+      // Test the connection with a longer timeout
       await Promise.race([
         db.command({ ping: 1 }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection test timeout')), 5000)
+          setTimeout(() => reject(new Error('Connection test timeout')), 10000)
         )
       ]);
 
@@ -90,8 +96,10 @@ async function connectToMongoDB() {
         throw err;
       }
       
-      // Linear backoff instead of exponential: 3 seconds between retries
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Exponential backoff with maximum of 10 seconds
+      const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
+      console.log(`Waiting ${backoffTime}ms before next retry...`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
     }
   }
 }
@@ -99,17 +107,32 @@ async function connectToMongoDB() {
 // Initialize collections and indexes
 async function initializeCollections() {
   try {
-    // Ensure indexes exist for better query performance
+    console.log('Initializing collections and creating indexes...');
+    
+    // Ensure collections exist first
+    const collections = await db.listCollections().toArray();
+    const collectionNames = collections.map(col => col.name);
+    
+    // Create trades collection and indexes if needed
+    if (!collectionNames.includes('trades')) {
+      console.log('Creating trades collection...');
+      await db.createCollection('trades');
+    }
     const trades = db.collection('trades');
     await trades.createIndex({ userId: 1 });
     await trades.createIndex({ ticker: 1 });
     
+    // Create cashes collection and indexes if needed
+    if (!collectionNames.includes('cashes')) {
+      console.log('Creating cashes collection...');
+      await db.createCollection('cashes');
+    }
     const cashes = db.collection('cashes');
     await cashes.createIndex({ userId: 1 });
     
-    console.log('Database indexes created successfully');
+    console.log('Database collections and indexes created successfully');
   } catch (err) {
-    console.error('Error creating indexes:', err);
+    console.error('Error initializing collections:', err);
     // Don't throw error here, just log it
   }
 }
@@ -163,12 +186,14 @@ app.use(async (req, res, next) => {
       if (typeof original === 'function') {
         return async function(...args) {
           try {
+            console.log(`Executing database operation: ${property}`);
             const result = await Promise.race([
               original.apply(target, args),
               new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Operation timeout')), 30000)
+                setTimeout(() => reject(new Error('Operation timeout')), 60000)
               )
             ]);
+            console.log(`Database operation ${property} completed successfully`);
             return result;
           } catch (err) {
             console.error(`Database operation ${property} failed:`, err);

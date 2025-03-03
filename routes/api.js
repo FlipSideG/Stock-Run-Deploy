@@ -118,21 +118,43 @@ router.post('/cash', async (req, res) => {
   }
 });
 
-// Endpoint to get all trades
+// Get all trades
 router.get('/trades', async (req, res) => {
   try {
-    console.log('[API] Getting all trades');
+    console.log('Fetching trades from database...');
+    const startTime = Date.now();
+
+    // Set a timeout for the database operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database operation timed out')), 30000);
+    });
+
+    // Actual database query with basic projection to minimize data transfer
+    const dbPromise = db.collection('trades')
+      .find({}, { projection: { _id: 1, symbol: 1, shares: 1, price: 1, type: 1, date: 1 } })
+      .toArray();
+
+    // Race between timeout and database operation
+    const trades = await Promise.race([dbPromise, timeoutPromise]);
     
-    // Get all trades from the database
-    const trades = await Trade.find().sort({ ticker: 1, purchaseDate: 1 });
+    const duration = Date.now() - startTime;
+    console.log(`Trades fetched successfully in ${duration}ms`);
     
-    console.log(`[API] Found ${trades.length} trades:`, trades);
-    
-    // Return the trades
     res.json(trades);
-  } catch (err) {
-    console.error('[API] Error getting trades:', err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error('Error fetching trades:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Send appropriate error response
+    if (error.message === 'Database operation timed out') {
+      res.status(504).json({ error: 'Database operation timed out. Please try again.' });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to fetch trades',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 });
 
