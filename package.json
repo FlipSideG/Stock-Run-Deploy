@@ -20,7 +20,6 @@
     "finnhub": "^1.2.19",
     "mongodb": "^6.14.1",
     "mongoose": "^7.4.1"
-     "connect-timeout": "^x.x.x" 
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
