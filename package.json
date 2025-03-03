@@ -17,6 +17,7 @@
     "ejs": "^3.1.9",
     "express": "^4.18.2",
     "finnhub": "^1.2.19",
+    "mongodb": "^6.14.1",
     "mongoose": "^7.4.1"
   },
   "devDependencies": {
