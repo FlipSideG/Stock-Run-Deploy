@@ -130,15 +130,15 @@ router.get('/trades', async (req, res) => {
     });
 
     // Actual database query with basic projection to minimize data transfer
-    const dbPromise = db.collection('trades')
-      .find({}, { projection: { _id: 1, symbol: 1, shares: 1, price: 1, type: 1, date: 1 } })
+    const dbPromise = req.db.collection('trades')
+      .find({})
       .toArray();
 
     // Race between timeout and database operation
     const trades = await Promise.race([dbPromise, timeoutPromise]);
     
     const duration = Date.now() - startTime;
-    console.log(`Trades fetched successfully in ${duration}ms`);
+    console.log(`Trades fetched successfully in ${duration}ms. Found ${trades.length} trades.`);
     
     res.json(trades);
   } catch (error) {
