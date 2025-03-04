@@ -1,6 +1,6 @@
 {
-  "name": "finance-portfolio",
-  "version": "1.0.0",
+  "name": "stock-run",
+  "version": "1.1.1",
   "description": "Finance portfolio tracker",
   "main": "index.js",
   "scripts": {
