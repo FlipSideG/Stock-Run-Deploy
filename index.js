@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const mongoose = require('mongoose');
 const path = require('path');
 const axios = require('axios');
 const apiRoutes = require('./routes/api');
@@ -30,6 +31,36 @@ const uri = process.env.MONGODB_URI || "mongodb+srv://Rick:Rick@stock-run.ts0bc.
 // Log connection string (without credentials)
 console.log('MongoDB Connection URI:', uri.replace(/(mongodb\+srv:\/\/)[^@]+@/, '$1*****@'));
 
+// Connect Mongoose for models
+mongoose.set('strictQuery', false);
+mongoose.connect(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 30000,
+})
+.then(() => {
+  console.log('Mongoose connected successfully');
+  
+  // Set up Mongoose connection events
+  mongoose.connection.on('error', err => {
+    console.error('Mongoose connection error:', err);
+  });
+  
+  mongoose.connection.on('disconnected', () => {
+    console.log('Mongoose disconnected, attempting to reconnect...');
+    setTimeout(() => {
+      mongoose.connect(uri).catch(err => console.error('Reconnection failed:', err));
+    }, 5000);
+  });
+})
+.catch(err => {
+  console.error('Mongoose initial connection error:', err);
+  console.error('Error details:', err.message);
+});
+
+// Also keep the MongoDB native client for any direct operations
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,

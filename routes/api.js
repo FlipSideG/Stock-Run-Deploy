@@ -121,29 +121,25 @@ router.post('/cash', async (req, res) => {
 // Get all trades
 router.get('/trades', async (req, res) => {
   try {
-    console.log('Fetching trades from database...');
-    const startTime = Date.now();
-
+    console.log('[API] Getting all trades');
+    
     // Set a timeout for the database operation
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Database operation timed out')), 30000);
     });
 
-    // Actual database query with basic projection to minimize data transfer
-    const dbPromise = req.db.collection('trades')
-      .find({})
-      .toArray();
+    // Use the Mongoose Trade model with a timeout
+    const dbPromise = Trade.find().lean().exec();
 
     // Race between timeout and database operation
     const trades = await Promise.race([dbPromise, timeoutPromise]);
     
-    const duration = Date.now() - startTime;
-    console.log(`Trades fetched successfully in ${duration}ms. Found ${trades.length} trades.`);
+    console.log(`[API] Found ${trades.length} trades`);
     
     res.json(trades);
   } catch (error) {
-    console.error('Error fetching trades:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('[API] Error getting trades:', error.message);
+    console.error('[API] Error stack:', error.stack);
     
     // Send appropriate error response
     if (error.message === 'Database operation timed out') {
