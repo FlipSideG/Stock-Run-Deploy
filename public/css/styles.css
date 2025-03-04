@@ -101,22 +101,39 @@ main {
 }
 
 /* Table styles */
-.table {
+.table-responsive {
+  overflow-x: auto;
+  max-width: 100%;
   margin-bottom: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 992px) {
+  .table-responsive {
+    overflow-x: visible;
+  }
+}
+
+.table {
+  width: 100%;
+  margin-bottom: 0;
+  table-layout: auto;
 }
 
 .table th {
   font-weight: 600;
-  color: var(--text-muted);
-  border-top: none;
-  border-bottom-width: 1px;
-  padding: 0.75rem 1rem;
+  color: var(--bs-gray-700);
+  background-color: var(--bs-gray-100);
+  white-space: nowrap;
+  padding: 0.75rem;
+  border-bottom: 2px solid var(--bs-gray-200);
 }
 
 .table td {
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
   vertical-align: middle;
-  border-color: var(--border-color);
+  border-bottom: 1px solid var(--bs-gray-200);
+  white-space: nowrap;
 }
 
 .table-hover tbody tr:hover {
@@ -496,4 +513,40 @@ main {
 
 .sell-button:hover {
   transform: scale(1.1);
+}
+
+/* Version number */
+.version-number {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Ensure tables fit properly */
+#trades-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+#trades-table th, #trades-table td {
+  padding: 0.75rem 0.5rem;
+}
+
+@media (min-width: 992px) {
+  .table-responsive {
+    overflow-x: visible;
+  }
+  
+  #trades-table th, #trades-table td {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 991.98px) {
+  #trades-table th, #trades-table td {
+    font-size: 0.9rem;
+  }
 } 

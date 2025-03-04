@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const axios = require('axios');
 const apiRoutes = require('./routes/api');
+const packageInfo = require('./package.json');
 
 const app = express();
 
@@ -266,7 +267,9 @@ app.use(async (req, res, next) => {
 app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => {
-  res.render('index');
+  res.render('index', { 
+    version: packageInfo.version 
+  });
 });
 
 // Health check endpoint

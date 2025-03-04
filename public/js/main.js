@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.error('[Frontend] Error loading trades:', error);
       // Show error message in tables
-      const tables = ['trades-table', 'portfolio-table'];
+      const tables = ['trades-table'];
       tables.forEach(tableId => {
         const table = document.getElementById(tableId);
         if (table) {
@@ -75,30 +75,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
     
-    // Set up alternative cash buttons
-    const addCashAltButton = document.getElementById('add-cash-alt');
-    const withdrawCashAltButton = document.getElementById('withdraw-cash-alt');
-    
-    if (addCashAltButton) {
-      addCashAltButton.addEventListener('click', function() {
-        const amount = document.getElementById('cash-amount-alt').value;
-        if (amount) {
-          document.getElementById('cash-amount').value = amount;
-          handleCashOperation('add');
-        }
-      });
-    }
-    
-    if (withdrawCashAltButton) {
-      withdrawCashAltButton.addEventListener('click', function() {
-        const amount = document.getElementById('cash-amount-alt').value;
-        if (amount) {
-          document.getElementById('cash-amount').value = amount;
-          handleCashOperation('withdraw');
-        }
-      });
-    }
-    
     // Set up refresh prices button
     const refreshPricesButton = document.getElementById('refresh-prices');
     if (refreshPricesButton) {
@@ -111,6 +87,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resetButton = document.getElementById('reset-button');
     if (resetButton) {
       resetButton.addEventListener('click', resetAllData);
+    }
+    
+    // Set up reset data button in footer
+    const resetDataButton = document.getElementById('reset-data');
+    if (resetDataButton) {
+      resetDataButton.addEventListener('click', resetAllData);
     }
     
     // Set default date for purchase date input
@@ -334,14 +316,38 @@ async function loadTrades() {
     
     console.log(`[Frontend] Loaded ${trades.length} trades:`, trades);
     
-    // Update both the trades table and portfolio table
+    // Update the trades table
     updateTradesTable(trades);
-    updatePortfolioTable(trades);
+    
+    // Calculate portfolio summary values
+    let totalInvested = 0;
+    let totalCurrentValue = 0;
+    
+    if (Array.isArray(trades) && trades.length > 0) {
+      trades.forEach(trade => {
+        const quantity = parseFloat(trade.quantity) || 0;
+        const purchasePrice = parseFloat(trade.purchasePrice) || 0;
+        const currentPrice = parseFloat(trade.currentPrice) || purchasePrice;
+        
+        totalInvested += quantity * purchasePrice;
+        totalCurrentValue += quantity * currentPrice;
+      });
+    }
+    
+    const totalGainLoss = totalCurrentValue - totalInvested;
+    
+    console.log(`[Frontend] Portfolio calculations: Invested=${totalInvested}, CurrentValue=${totalCurrentValue}, GainLoss=${totalGainLoss}`);
+    
+    // Update portfolio summary
+    updatePortfolioSummary(totalInvested, totalCurrentValue, totalGainLoss);
     
     console.log('[Frontend] Trades loaded successfully');
   } catch (error) {
     console.error('[Frontend] Error loading trades:', error);
     alert(`Error loading trades: ${error.message}`);
+    
+    // Set default values for portfolio summary in case of error
+    updatePortfolioSummary(0, 0, 0);
   }
 }
 
@@ -452,135 +458,6 @@ function updateTradesTable(trades) {
   }
 }
 
-// Function to update the portfolio table
-function updatePortfolioTable(trades) {
-  try {
-    console.log('[Frontend] Updating portfolio table...');
-    
-    const portfolioTable = document.getElementById('portfolio-table');
-    if (!portfolioTable) {
-      console.error('[Frontend] Portfolio table not found');
-      return;
-    }
-    
-    const tableBody = portfolioTable.querySelector('tbody');
-    if (!tableBody) {
-      console.error('[Frontend] Portfolio table body not found');
-      return;
-    }
-    
-    // Clear existing rows
-    tableBody.innerHTML = '';
-    
-    if (!Array.isArray(trades) || trades.length === 0) {
-      console.log('[Frontend] No trades found for portfolio');
-      tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No positions</td></tr>';
-      
-      // Update portfolio summary with zeros
-      updatePortfolioSummary(0, 0, 0);
-      return;
-    }
-    
-    // Variables for portfolio summary
-    let totalInvested = 0;
-    let totalValue = 0;
-    let totalGainLoss = 0;
-    
-    // Group trades by ticker
-    const tradesByTicker = {};
-    
-    // Process each trade and group by ticker
-    trades.forEach(trade => {
-      const ticker = trade.ticker;
-      const quantity = parseFloat(trade.quantity) || 0;
-      const purchasePrice = parseFloat(trade.purchasePrice) || 0;
-      const currentPrice = parseFloat(trade.currentPrice) || purchasePrice;
-      
-      if (!tradesByTicker[ticker]) {
-        tradesByTicker[ticker] = {
-          ticker: ticker,
-          totalQuantity: 0,
-          totalCost: 0,
-          currentPrice: currentPrice
-        };
-      }
-      
-      // Add this trade to the ticker group
-      tradesByTicker[ticker].totalQuantity += quantity;
-      tradesByTicker[ticker].totalCost += quantity * purchasePrice;
-      
-      // Use the most recent current price
-      if (currentPrice) {
-        tradesByTicker[ticker].currentPrice = currentPrice;
-      }
-    });
-    
-    console.log('[Frontend] Grouped trades by ticker for portfolio:', tradesByTicker);
-    
-    // Process each ticker group and create table rows
-    for (const ticker in tradesByTicker) {
-      const tickerData = tradesByTicker[ticker];
-      
-      // Skip if quantity is zero (all shares sold)
-      if (tickerData.totalQuantity <= 0) {
-        console.log(`[Frontend] Skipping ${ticker} in portfolio - no shares owned`);
-        continue;
-      }
-      
-      // Calculate weighted average purchase price
-      const weightedAvgPrice = tickerData.totalCost / tickerData.totalQuantity;
-      
-      // Calculate current value and gain/loss
-      const currentValue = tickerData.totalQuantity * tickerData.currentPrice;
-      const gainLoss = currentValue - tickerData.totalCost;
-      const gainLossPercent = (gainLoss / tickerData.totalCost) * 100;
-      
-      // Add to portfolio totals
-      totalInvested += tickerData.totalCost;
-      totalValue += currentValue;
-      totalGainLoss += gainLoss;
-      
-      // Create a row for this ticker
-      const row = document.createElement('tr');
-      
-      // Format the values
-      const formattedAvgPrice = formatCurrency(weightedAvgPrice);
-      const formattedCurrentPrice = formatCurrency(tickerData.currentPrice);
-      const formattedValue = formatCurrency(currentValue);
-      const formattedGainLoss = formatCurrency(gainLoss);
-      const formattedGainLossPercent = gainLossPercent.toFixed(2) + '%';
-      
-      // Set the row content
-      row.innerHTML = `
-        <td>${ticker}</td>
-        <td>${tickerData.totalQuantity.toFixed(2)}</td>
-        <td>${formattedAvgPrice}</td>
-        <td>${formattedCurrentPrice}</td>
-        <td>${formattedValue}</td>
-        <td class="${gainLoss >= 0 ? 'text-success' : 'text-danger'}">
-          ${formattedGainLoss} (${formattedGainLossPercent})
-        </td>
-      `;
-      
-      tableBody.appendChild(row);
-    }
-    
-    // If no rows were added (all trades have zero quantity), show a message
-    if (tableBody.children.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No active positions</td></tr>';
-    }
-    
-    console.log(`[Frontend] Portfolio summary: Invested=${totalInvested}, Value=${totalValue}, Gain/Loss=${totalGainLoss}`);
-    
-    // Update portfolio summary
-    updatePortfolioSummary(totalInvested, totalValue, totalGainLoss);
-    
-    console.log('[Frontend] Portfolio table updated');
-  } catch (error) {
-    console.error('[Frontend] Error updating portfolio table:', error);
-  }
-}
-
 // Function to load cash balance
 async function loadCashBalance() {
   try {
@@ -666,8 +543,27 @@ function updatePortfolioSummary(totalInvested, totalValue, totalGainLoss) {
         gainLossPercent = (totalGainLoss / totalInvested) * 100;
       }
       totalGainLossPercentElement.textContent = `(${gainLossPercent.toFixed(2)}%)`;
-      totalGainLossPercentElement.classList.remove('text-success', 'text-danger');
-      totalGainLossPercentElement.classList.add(gainLossPercent >= 0 ? 'text-success' : 'text-danger');
+      
+      // Set the appropriate color class
+      totalGainLossPercentElement.classList.remove('text-success', 'text-danger', 'text-muted');
+      if (gainLossPercent > 0) {
+        totalGainLossPercentElement.classList.add('text-success');
+      } else if (gainLossPercent < 0) {
+        totalGainLossPercentElement.classList.add('text-danger');
+      } else {
+        totalGainLossPercentElement.classList.add('text-muted');
+      }
+    }
+    
+    // Update the gain/loss color
+    const totalGainLossElement = document.getElementById('total-gain-loss');
+    if (totalGainLossElement) {
+      totalGainLossElement.classList.remove('text-success', 'text-danger');
+      if (totalGainLoss > 0) {
+        totalGainLossElement.classList.add('text-success');
+      } else if (totalGainLoss < 0) {
+        totalGainLossElement.classList.add('text-danger');
+      }
     }
     
     console.log(`[Frontend] Portfolio summary updated. Total portfolio value: ${totalPortfolioValue}`);
@@ -818,120 +714,19 @@ async function loadPortfolio() {
     console.log('[Frontend] Portfolio data:', portfolio);
     console.log('[Frontend] Using cash balance:', cashBalance);
     
-    // Update portfolio summary - check if elements exist first
-    const totalValueEl = document.getElementById('total-value');
-    const cashBalanceEl = document.getElementById('cash-balance');
-    const investedValueEl = document.getElementById('invested-value');
-    const profitLossEl = document.getElementById('profit-loss');
+    // Update cash balance displays
+    updateAllCashDisplays(cashBalance);
     
-    // Log which elements were found or not found
-    console.log('[Frontend] DOM elements found:', {
-      totalValueEl: !!totalValueEl,
-      cashBalanceEl: !!cashBalanceEl,
-      investedValueEl: !!investedValueEl,
-      profitLossEl: !!profitLossEl
-    });
+    // Update portfolio summary
+    updatePortfolioSummary(portfolio.investedValue, portfolio.currentValue, portfolio.profitLoss);
     
-    // Only update elements that exist
-    if (totalValueEl) totalValueEl.textContent = `$${formatNumber(portfolio.totalValue)}`;
-    
-    // IMPORTANT: Make sure we update the cash balance in the portfolio section
-    if (cashBalanceEl) {
-      cashBalanceEl.textContent = `$${formatNumber(cashBalance)}`;
-      console.log(`[Frontend] Updated portfolio cash balance display to: $${formatNumber(cashBalance)}`);
-    }
-    
-    if (investedValueEl) investedValueEl.textContent = `$${formatNumber(portfolio.investedValue)}`;
-    
-    // Recalculate total value using our cash balance
-    const recalculatedTotalValue = portfolio.currentValue + cashBalance;
-    
-    // Update total value with recalculated amount
-    if (totalValueEl) {
-      totalValueEl.textContent = `$${formatNumber(recalculatedTotalValue)}`;
-      console.log(`[Frontend] Updated total value to: $${formatNumber(recalculatedTotalValue)}`);
-    }
-    
-    // Recalculate profit/loss
-    if (profitLossEl) {
-      const profitLoss = recalculatedTotalValue - portfolio.investedValue;
-      profitLossEl.textContent = `${profitLoss >= 0 ? '+' : ''}$${formatNumber(profitLoss)}`;
-      profitLossEl.className = profitLoss >= 0 ? 'text-success' : 'text-danger';
-      console.log(`[Frontend] Updated profit/loss to: ${profitLoss >= 0 ? '+' : ''}$${formatNumber(profitLoss)}`);
-    }
-    
-    // Update portfolio holdings
-    const portfolioTable = document.getElementById('portfolio-table');
-    
-    if (!portfolioTable) {
-      console.error('[Frontend] Portfolio table element not found');
-      return;
-    }
-    
-    portfolioTable.innerHTML = '';
-    
-    if (portfolio.holdings && portfolio.holdings.length > 0) {
-      portfolio.holdings.forEach(holding => {
-        console.log(`[Frontend] Displaying holding: ${holding.ticker}, Current Price: ${holding.currentPrice}`);
-        
-        const row = document.createElement('tr');
-        
-        const profitLoss = holding.profit;
-        const profitLossClass = profitLoss >= 0 ? 'text-success' : 'text-danger';
-        const profitLossPrefix = profitLoss >= 0 ? '+' : '';
-        
-        row.innerHTML = `
-          <td>${holding.ticker}</td>
-          <td>${formatNumber(holding.totalQuantity)}</td>
-          <td>$${formatNumber(holding.averagePrice)}</td>
-          <td>$${formatNumber(holding.currentPrice)}</td>
-          <td>$${formatNumber(holding.value)}</td>
-          <td class="${profitLossClass}">${profitLossPrefix}$${formatNumber(profitLoss)}</td>
-        `;
-        
-        portfolioTable.appendChild(row);
-      });
-    } else {
-      // Display a message if there are no holdings
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td colspan="6" class="text-center">No holdings in portfolio</td>
-      `;
-      portfolioTable.appendChild(row);
-    }
+    // Load trades to update the trades table
+    await loadTrades();
     
     console.log('[Frontend] Portfolio loaded successfully');
-    
   } catch (error) {
     console.error('[Frontend] Error loading portfolio:', error);
-    
-    // Display error in the portfolio table if it exists
-    const portfolioTable = document.getElementById('portfolio-table');
-    if (portfolioTable) {
-      portfolioTable.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center text-danger">
-            Error loading portfolio: ${error.message}
-          </td>
-        </tr>
-      `;
-    }
-    
-    // Set default values for portfolio summary elements that exist
-    const elements = {
-      'total-value': '$0.00',
-      'cash-balance': '$0.00',
-      'invested-value': '$0.00',
-      'profit-loss': '$0.00'
-    };
-    
-    for (const [id, value] of Object.entries(elements)) {
-      const element = document.getElementById(id);
-      if (element) {
-        element.textContent = value;
-        if (id === 'profit-loss') element.className = '';
-      }
-    }
+    alert(`Error loading portfolio: ${error.message}`);
   }
 }
 
@@ -1191,41 +986,6 @@ function openSellModal(event) {
   } catch (error) {
     console.error('[Frontend] Error opening sell modal:', error);
     alert('There was a problem opening the sell dialog. Please try again.');
-  }
-}
-
-// Simplify sellTrade function
-async function sellTrade() {
-  const tradeId = document.getElementById('sell-trade-id').value;
-  const quantity = parseFloat(document.getElementById('sell-quantity').value);
-  const sellPrice = parseFloat(document.getElementById('sell-price').value);
-  
-  if (isNaN(quantity) || quantity <= 0 || isNaN(sellPrice) || sellPrice <= 0) {
-    alert('Please enter valid quantity and price');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`/api/trades/sell/${tradeId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ quantity, sellPrice })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to sell trade');
-    }
-    
-    window.sellModal.hide();
-    loadCashBalance();
-    loadTrades();
-    // Portfolio will be loaded by loadTrades()
-  } catch (error) {
-    console.error('Error selling trade:', error);
-    alert(error.message);
   }
 }
 
