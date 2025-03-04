@@ -32,7 +32,23 @@ const uri = process.env.MONGODB_URI || "mongodb+srv://Rick:Rick@stock-run.ts0bc.
 console.log('MongoDB Connection URI:', uri.replace(/(mongodb\+srv:\/\/)[^@]+@/, '$1*****@'));
 
 // Connect Mongoose for models
+console.log('Setting up Mongoose connection...');
 mongoose.set('strictQuery', false);
+
+// Handle Mongoose connection events
+mongoose.connection.on('connected', () => {
+  console.log('Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected from MongoDB');
+});
+
+// Initial Mongoose connection
 mongoose.connect(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -42,18 +58,6 @@ mongoose.connect(uri, {
 })
 .then(() => {
   console.log('Mongoose connected successfully');
-  
-  // Set up Mongoose connection events
-  mongoose.connection.on('error', err => {
-    console.error('Mongoose connection error:', err);
-  });
-  
-  mongoose.connection.on('disconnected', () => {
-    console.log('Mongoose disconnected, attempting to reconnect...');
-    setTimeout(() => {
-      mongoose.connect(uri).catch(err => console.error('Reconnection failed:', err));
-    }, 5000);
-  });
 })
 .catch(err => {
   console.error('Mongoose initial connection error:', err);
@@ -201,11 +205,30 @@ app.use((err, req, res, next) => {
 
 // Make db available to routes with connection check and operation timeout
 app.use(async (req, res, next) => {
+  // Check MongoDB native driver connection
   if (!isConnected) {
     try {
       await connectToMongoDB();
     } catch (err) {
       console.error('Failed to reconnect to MongoDB:', err);
+      return res.status(503).json({ error: 'Database connection error. Please try again later.' });
+    }
+  }
+
+  // Check Mongoose connection
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      console.log('Mongoose not connected, attempting to reconnect...');
+      await mongoose.connect(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        connectTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        serverSelectionTimeoutMS: 30000,
+      });
+      console.log('Mongoose reconnected successfully');
+    } catch (err) {
+      console.error('Failed to reconnect Mongoose:', err);
       return res.status(503).json({ error: 'Database connection error. Please try again later.' });
     }
   }

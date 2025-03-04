@@ -123,20 +123,30 @@ router.get('/trades', async (req, res) => {
   try {
     console.log('[API] Getting all trades');
     
+    // Verify that the Trade model is properly defined
+    if (!Trade || typeof Trade.find !== 'function') {
+      console.error('[API] Trade model is not properly defined:', Trade);
+      return res.status(500).json({ 
+        error: 'Failed to fetch trades',
+        details: 'Trade model is not properly defined',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     // Set a timeout for the database operation
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Database operation timed out')), 30000);
     });
 
     // Use the Mongoose Trade model with a timeout
-    const dbPromise = Trade.find().lean().exec();
+    const dbPromise = Trade.find({}).lean().exec();
 
     // Race between timeout and database operation
     const trades = await Promise.race([dbPromise, timeoutPromise]);
     
-    console.log(`[API] Found ${trades.length} trades`);
+    console.log(`[API] Found ${trades ? trades.length : 0} trades`);
     
-    res.json(trades);
+    res.json(trades || []);
   } catch (error) {
     console.error('[API] Error getting trades:', error.message);
     console.error('[API] Error stack:', error.stack);
