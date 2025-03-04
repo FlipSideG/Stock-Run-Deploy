@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setupNumberFormatting();
   
   // Event listeners for cash management
-  document.getElementById('add-cash').addEventListener('click', () => updateCash(true));
-  document.getElementById('withdraw-cash').addEventListener('click', () => updateCash(false));
+  document.getElementById('add-cash').addEventListener('click', () => handleCashOperation('add'));
+  document.getElementById('withdraw-cash').addEventListener('click', () => handleCashOperation('withdraw'));
   
   // Alternative cash management buttons
   const addCashAlt = document.getElementById('add-cash-alt');
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const amount = document.getElementById('cash-amount-alt').value;
       if (amount) {
         document.getElementById('cash-amount').value = amount;
-        updateCash(true);
+        handleCashOperation('add');
       }
     });
   }
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const amount = document.getElementById('cash-amount-alt').value;
       if (amount) {
         document.getElementById('cash-amount').value = amount;
-        updateCash(false);
+        handleCashOperation('withdraw');
       }
     });
   }
@@ -64,18 +64,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Detect device type and add appropriate class to body
 function detectDeviceType() {
-  const isMobile = window.innerWidth < 768 || 
-                  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  if (isMobile) {
+  try {
+    console.log('[Frontend] Detecting device type...');
+    console.log('[Frontend] Window width:', window.innerWidth);
+    console.log('[Frontend] User agent:', navigator.userAgent);
+    
+    const isMobile = window.innerWidth < 768 || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      document.body.classList.add('mobile-device');
+      console.log('[Frontend] Mobile device detected');
+    } else {
+      document.body.classList.remove('mobile-device');
+      console.log('[Frontend] Desktop device detected');
+    }
+    
+    return isMobile;
+  } catch (error) {
+    console.error('[Frontend] Error detecting device type:', error);
+    // Default to mobile if there's an error
     document.body.classList.add('mobile-device');
-    console.log('[Frontend] Mobile device detected');
-  } else {
-    document.body.classList.remove('mobile-device');
-    console.log('[Frontend] Desktop device detected');
+    return true;
   }
-  
-  return isMobile;
 }
 
 // Adjust UI elements based on device type
@@ -240,6 +251,9 @@ function updateTradesTable(trades) {
       return;
     }
     
+    // Check if we're on mobile
+    const isMobile = document.body.classList.contains('mobile-device');
+    
     // Process each trade and add to table
     trades.forEach(trade => {
       const ticker = trade.ticker;
@@ -262,25 +276,46 @@ function updateTradesTable(trades) {
       const formattedGainLoss = formatCurrency(gainLoss);
       const formattedGainLossPercent = gainLossPercent.toFixed(2) + '%';
       
-      // Set the row content
-      row.innerHTML = `
-        <td>${ticker}</td>
-        <td>${quantity.toFixed(2)}</td>
-        <td>${formattedPurchasePrice}</td>
-        <td>${formattedCurrentPrice}</td>
-        <td>${formattedValue}</td>
-        <td class="${gainLoss >= 0 ? 'text-success' : 'text-danger'}">
-          ${formattedGainLoss} (${formattedGainLossPercent})
-        </td>
-        <td>
-          <button class="btn btn-danger btn-sm sell-button" 
-                  data-ticker="${ticker}" 
-                  data-quantity="${quantity}" 
-                  data-price="${currentPrice}">
-            Sell
-          </button>
-        </td>
-      `;
+      // Set the row content - optimized for mobile if needed
+      if (isMobile) {
+        row.innerHTML = `
+          <td>${ticker}</td>
+          <td>${quantity.toFixed(2)}</td>
+          <td class="hide-xs">${formattedPurchasePrice}</td>
+          <td class="hide-xs">${trade.purchaseDate || 'N/A'}</td>
+          <td>${formattedCurrentPrice}</td>
+          <td class="${gainLoss >= 0 ? 'text-success' : 'text-danger'}">
+            ${formattedGainLoss}
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm sell-button" 
+                    data-ticker="${ticker}" 
+                    data-quantity="${quantity}" 
+                    data-price="${currentPrice}">
+              <i class="bi bi-cash-coin"></i>
+            </button>
+          </td>
+        `;
+      } else {
+        row.innerHTML = `
+          <td>${ticker}</td>
+          <td>${quantity.toFixed(2)}</td>
+          <td class="hide-xs">${formattedPurchasePrice}</td>
+          <td class="hide-xs">${trade.purchaseDate || 'N/A'}</td>
+          <td>${formattedCurrentPrice}</td>
+          <td class="${gainLoss >= 0 ? 'text-success' : 'text-danger'}">
+            ${formattedGainLoss} (${formattedGainLossPercent})
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm sell-button" 
+                    data-ticker="${ticker}" 
+                    data-quantity="${quantity}" 
+                    data-price="${currentPrice}">
+              Sell
+            </button>
+          </td>
+        `;
+      }
       
       tableBody.appendChild(row);
     });
@@ -441,10 +476,8 @@ async function loadCashBalance() {
     
     console.log('[Frontend] Cash balance loaded:', data);
     
-    const cashBalanceElement = document.getElementById('cash-balance');
-    if (cashBalanceElement) {
-      cashBalanceElement.textContent = formatCurrency(data.balance);
-    }
+    // Update all cash balance displays
+    updateAllCashDisplays(data.balance);
     
     console.log('[Frontend] Cash balance updated');
     return data.balance;
@@ -452,103 +485,173 @@ async function loadCashBalance() {
     console.error('[Frontend] Error loading cash balance:', error);
     
     // Set cash balance to 0 if there's an error
+    updateAllCashDisplays(0);
+    return 0;
+  }
+}
+
+// Function to update all cash balance displays
+function updateAllCashDisplays(balance) {
+  try {
+    console.log('[Frontend] Updating all cash displays with balance:', balance);
+    
+    // Update main cash balance element
     const cashBalanceElement = document.getElementById('cash-balance');
     if (cashBalanceElement) {
-      cashBalanceElement.textContent = formatCurrency(0);
+      cashBalanceElement.textContent = formatCurrency(balance);
     }
-    return 0;
+    
+    // Update all elements with cash-balance-display class
+    const cashDisplays = document.querySelectorAll('.cash-balance-display');
+    cashDisplays.forEach(display => {
+      display.textContent = formatCurrency(balance);
+    });
+    
+    console.log('[Frontend] All cash displays updated');
+  } catch (error) {
+    console.error('[Frontend] Error updating cash displays:', error);
   }
 }
 
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Frontend] DOM loaded, initializing app...');
-  
-  // Check market status first
-  checkMarketStatus();
-  
-  // Load initial data
-  await loadCashBalance();
-  await loadTrades();
-  
-  // Set up number formatting for all numeric inputs
-  setupNumberFormatting('cash-amount', true, 2);       // Cash amount (dollars and cents)
-  setupNumberFormatting('quantity', true, 2);          // Quantity (can have fractional shares)
-  setupNumberFormatting('purchase-price', true, 2);    // Purchase price (dollars and cents)
-  
-  // Set up event listeners for the trade form
-  const tradeForm = document.getElementById('trade-form');
-  if (tradeForm) {
-    console.log('[Frontend] Setting up trade form submit listener');
-    tradeForm.addEventListener('submit', addTrade);
-  } else {
-    console.warn('[Frontend] Trade form not found');
-  }
-  
-  // Set up event listeners for cash buttons
-  const addCashButton = document.getElementById('add-cash');
-  const withdrawCashButton = document.getElementById('withdraw-cash');
-  
-  if (addCashButton) {
-    console.log('[Frontend] Setting up add cash button listener');
-    addCashButton.addEventListener('click', function(event) {
-      event.preventDefault();
-      handleCashOperation('add');
-    });
-  }
-  
-  if (withdrawCashButton) {
-    console.log('[Frontend] Setting up withdraw cash button listener');
-    withdrawCashButton.addEventListener('click', function(event) {
-      event.preventDefault();
-      handleCashOperation('withdraw');
-    });
-  }
-  
-  // Set up refresh prices button
-  const refreshPricesButton = document.getElementById('refresh-prices');
-  if (refreshPricesButton) {
-    refreshPricesButton.addEventListener('click', function() {
-      refreshPrices(true);
-    });
-  }
-  
-  // Set up mock toggle button
-  const mockToggleButton = document.getElementById('mock-toggle');
-  if (mockToggleButton) {
-    mockToggleButton.addEventListener('click', toggleMockPrices);
-  }
-  
-  // Set up auto-refresh toggle
-  const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
-  if (autoRefreshToggle) {
-    autoRefreshToggle.addEventListener('change', toggleAutoRefresh);
+  try {
+    console.log('[Frontend] DOM loaded, initializing app...');
     
-    // Start auto-refresh if toggle is checked by default
-    if (autoRefreshToggle.checked) {
-      startAutoRefresh();
+    // Detect device type first
+    detectDeviceType();
+    
+    // Adjust UI for device type
+    adjustUIForDeviceType();
+    
+    // Check market status
+    await checkMarketStatus().catch(err => {
+      console.error('[Frontend] Error checking market status:', err);
+      // Continue with default market status
+    });
+    
+    // Load initial data with error handling
+    try {
+      await loadCashBalance();
+    } catch (error) {
+      console.error('[Frontend] Error loading cash balance:', error);
+      // Continue with default cash balance
+      updateAllCashDisplays(0);
     }
+    
+    try {
+      await loadTrades();
+    } catch (error) {
+      console.error('[Frontend] Error loading trades:', error);
+      // Show error message in tables
+      const tables = ['trades-table', 'portfolio-table'];
+      tables.forEach(tableId => {
+        const table = document.getElementById(tableId);
+        if (table) {
+          const tbody = table.querySelector('tbody');
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
+          }
+        }
+      });
+    }
+    
+    // Set up number formatting for all numeric inputs
+    setupNumberFormatting('cash-amount', true, 2);       // Cash amount (dollars and cents)
+    setupNumberFormatting('cash-amount-alt', true, 2);   // Alternative cash amount
+    setupNumberFormatting('quantity', true, 2);          // Quantity (can have fractional shares)
+    setupNumberFormatting('purchase-price', true, 2);    // Purchase price (dollars and cents)
+    
+    // Set up event listeners for the trade form
+    const tradeForm = document.getElementById('trade-form');
+    if (tradeForm) {
+      console.log('[Frontend] Setting up trade form submit listener');
+      tradeForm.addEventListener('submit', addTrade);
+    } else {
+      console.warn('[Frontend] Trade form not found');
+    }
+    
+    // Set up event listeners for cash buttons
+    const addCashButton = document.getElementById('add-cash');
+    const withdrawCashButton = document.getElementById('withdraw-cash');
+    
+    if (addCashButton) {
+      console.log('[Frontend] Setting up add cash button listener');
+      addCashButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        handleCashOperation('add');
+      });
+    }
+    
+    if (withdrawCashButton) {
+      console.log('[Frontend] Setting up withdraw cash button listener');
+      withdrawCashButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        handleCashOperation('withdraw');
+      });
+    }
+    
+    // Set up alternative cash buttons
+    const addCashAltButton = document.getElementById('add-cash-alt');
+    const withdrawCashAltButton = document.getElementById('withdraw-cash-alt');
+    
+    if (addCashAltButton) {
+      addCashAltButton.addEventListener('click', function() {
+        const amount = document.getElementById('cash-amount-alt').value;
+        if (amount) {
+          document.getElementById('cash-amount').value = amount;
+          handleCashOperation('add');
+        }
+      });
+    }
+    
+    if (withdrawCashAltButton) {
+      withdrawCashAltButton.addEventListener('click', function() {
+        const amount = document.getElementById('cash-amount-alt').value;
+        if (amount) {
+          document.getElementById('cash-amount').value = amount;
+          handleCashOperation('withdraw');
+        }
+      });
+    }
+    
+    // Set up refresh prices button
+    const refreshPricesButton = document.getElementById('refresh-prices');
+    if (refreshPricesButton) {
+      refreshPricesButton.addEventListener('click', function() {
+        refreshPrices(true);
+      });
+    }
+    
+    // Set up reset button
+    const resetButton = document.getElementById('reset-button');
+    if (resetButton) {
+      resetButton.addEventListener('click', resetAllData);
+    }
+    
+    // Set default date for purchase date input
+    const purchaseDateInput = document.getElementById('purchase-date');
+    if (purchaseDateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      purchaseDateInput.value = today;
+    } else {
+      console.warn('[Frontend] Purchase date input not found');
+    }
+    
+    // Update last refreshed time initially
+    updateLastRefreshedTime();
+    
+    // Handle window resize events
+    window.addEventListener('resize', function() {
+      detectDeviceType();
+      adjustUIForDeviceType();
+    });
+    
+    console.log('[Frontend] App initialization complete');
+  } catch (error) {
+    console.error('[Frontend] Critical error during app initialization:', error);
+    alert('There was a problem loading the application. Please try refreshing the page.');
   }
-  
-  // Set up reset button
-  const resetButton = document.getElementById('reset-data');
-  if (resetButton) {
-    resetButton.addEventListener('click', resetAllData);
-  }
-  
-  // Set default date for purchase date input
-  const purchaseDateInput = document.getElementById('purchase-date');
-  if (purchaseDateInput) {
-    const today = new Date().toISOString().split('T')[0];
-    purchaseDateInput.value = today;
-  } else {
-    console.warn('[Frontend] Purchase date input not found');
-  }
-  
-  // Update last refreshed time initially
-  updateLastRefreshedTime();
-  
-  console.log('[Frontend] App initialization complete');
 });
 
 // Function to handle cash operations (add/withdraw)
@@ -853,145 +956,167 @@ async function addTrade(event) {
 
 // Function to open the sell modal
 function openSellModal(event) {
-  const button = event.currentTarget;
-  const ticker = button.getAttribute('data-ticker');
-  const maxQuantity = parseFloat(button.getAttribute('data-quantity'));
-  const currentPrice = parseFloat(button.getAttribute('data-price'));
-  
-  console.log(`[Frontend] Opening sell modal for ${ticker}, max quantity: ${maxQuantity}, current price: ${currentPrice}`);
-  
-  // Create modal HTML
-  const modalHTML = `
-    <div class="modal fade" id="sellModal" tabindex="-1" aria-labelledby="sellModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="sellModalLabel">Sell ${ticker}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="sell-form">
-              <div class="mb-3">
-                <label for="sell-quantity" class="form-label">Quantity (max: ${maxQuantity.toFixed(2)})</label>
-                <input type="text" class="form-control" id="sell-quantity" value="${maxQuantity.toFixed(2)}" required>
-              </div>
-              <div class="mb-3">
-                <label for="sell-price" class="form-label">Sell Price</label>
-                <input type="text" class="form-control" id="sell-price" value="${currentPrice.toFixed(2)}" required>
-              </div>
-              <div class="mb-3">
-                <label for="sell-total" class="form-label">Total Proceeds</label>
-                <input type="text" class="form-control" id="sell-total" value="${(maxQuantity * currentPrice).toFixed(2)}" readonly>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-danger" id="confirm-sell">Sell Shares</button>
+  try {
+    const button = event.currentTarget;
+    const ticker = button.getAttribute('data-ticker');
+    const maxQuantity = parseFloat(button.getAttribute('data-quantity'));
+    const currentPrice = parseFloat(button.getAttribute('data-price'));
+    
+    console.log(`[Frontend] Opening sell modal for ${ticker}, max quantity: ${maxQuantity}, current price: ${currentPrice}`);
+    
+    // Remove any existing modal
+    const existingModal = document.getElementById('sellModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+    
+    // Check if we're on mobile
+    const isMobile = document.body.classList.contains('mobile-device');
+    
+    // Create modal HTML - simplified for mobile if needed
+    const modalHTML = `
+      <div class="modal fade" id="sellModal" tabindex="-1" aria-labelledby="sellModalLabel" aria-hidden="true">
+        <div class="modal-dialog ${isMobile ? 'modal-fullscreen-sm-down' : ''}">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="sellModalLabel">Sell ${ticker}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="sell-form">
+                <div class="mb-3">
+                  <label for="sell-quantity" class="form-label">Quantity (max: ${maxQuantity.toFixed(2)})</label>
+                  <input type="text" class="form-control" id="sell-quantity" value="${maxQuantity.toFixed(2)}" required>
+                </div>
+                <div class="mb-3">
+                  <label for="sell-price" class="form-label">Sell Price</label>
+                  <input type="text" class="form-control" id="sell-price" value="${currentPrice.toFixed(2)}" required>
+                </div>
+                <div class="mb-3">
+                  <label for="sell-total" class="form-label">Total Proceeds</label>
+                  <input type="text" class="form-control" id="sell-total" value="${(maxQuantity * currentPrice).toFixed(2)}" readonly>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-danger" id="confirm-sell">Sell Shares</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  `;
-  
-  // Add modal to the document
-  const modalContainer = document.createElement('div');
-  modalContainer.innerHTML = modalHTML;
-  document.body.appendChild(modalContainer);
-  
-  // Initialize the modal
-  const sellModal = new bootstrap.Modal(document.getElementById('sellModal'));
-  sellModal.show();
-  
-  // Set up quantity and price input formatting
-  setupNumberFormatting('sell-quantity', true, 2);
-  setupNumberFormatting('sell-price', true, 2);
-  
-  // Set up event listeners for quantity and price changes
-  const quantityInput = document.getElementById('sell-quantity');
-  const priceInput = document.getElementById('sell-price');
-  const totalInput = document.getElementById('sell-total');
-  
-  function updateTotal() {
-    const quantity = parseFloat(quantityInput.value.replace(/,/g, '')) || 0;
-    const price = parseFloat(priceInput.value.replace(/,/g, '')) || 0;
-    const total = quantity * price;
-    totalInput.value = formatNumber(total, 2);
-  }
-  
-  quantityInput.addEventListener('input', updateTotal);
-  priceInput.addEventListener('input', updateTotal);
-  
-  // Set up confirm sell button
-  const confirmSellButton = document.getElementById('confirm-sell');
-  confirmSellButton.addEventListener('click', async () => {
-    try {
+    `;
+    
+    // Add modal to the document
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer);
+    
+    // Initialize the modal
+    const sellModal = new bootstrap.Modal(document.getElementById('sellModal'));
+    sellModal.show();
+    
+    // Set up quantity and price input formatting
+    setupNumberFormatting('sell-quantity', true, 2);
+    setupNumberFormatting('sell-price', true, 2);
+    
+    // Set up event listeners for quantity and price changes
+    const quantityInput = document.getElementById('sell-quantity');
+    const priceInput = document.getElementById('sell-price');
+    const totalInput = document.getElementById('sell-total');
+    
+    function updateTotal() {
       const quantity = parseFloat(quantityInput.value.replace(/,/g, '')) || 0;
       const price = parseFloat(priceInput.value.replace(/,/g, '')) || 0;
-      
-      if (quantity <= 0) {
-        alert('Quantity must be greater than zero');
-        return;
-      }
-      
-      if (quantity > maxQuantity) {
-        alert(`You can only sell up to ${maxQuantity.toFixed(2)} shares`);
-        return;
-      }
-      
-      if (price <= 0) {
-        alert('Price must be greater than zero');
-        return;
-      }
-      
-      console.log(`[Frontend] Selling ${quantity} shares of ${ticker} at ${price}`);
-      
-      // Call API to sell shares
-      const response = await fetch('/api/sell', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ticker,
-          quantity,
-          sellPrice: price
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to sell shares: ${errorText}`);
-      }
-      
-      const result = await response.json();
-      
-      console.log('[Frontend] Sell result:', result);
-      
-      // Close the modal
-      sellModal.hide();
-      
-      // Remove the modal from the DOM after it's hidden
-      document.getElementById('sellModal').addEventListener('hidden.bs.modal', function () {
-        this.remove();
-      });
-      
-      // Reload trades and cash balance
-      await Promise.all([loadTrades(), loadCashBalance()]);
-      
-      // Show success message
-      alert(`Successfully sold ${quantity} shares of ${ticker} for ${formatCurrency(quantity * price)}`);
-      
-    } catch (error) {
-      console.error('[Frontend] Error selling shares:', error);
-      alert(`Error: ${error.message}`);
+      const total = quantity * price;
+      totalInput.value = formatNumber(total, 2);
     }
-  });
-  
-  // Clean up when the modal is closed
-  document.getElementById('sellModal').addEventListener('hidden.bs.modal', function () {
-    this.remove();
-  });
+    
+    quantityInput.addEventListener('input', updateTotal);
+    priceInput.addEventListener('input', updateTotal);
+    
+    // Set up confirm sell button
+    const confirmSellButton = document.getElementById('confirm-sell');
+    confirmSellButton.addEventListener('click', async () => {
+      try {
+        const quantity = parseFloat(quantityInput.value.replace(/,/g, '')) || 0;
+        const price = parseFloat(priceInput.value.replace(/,/g, '')) || 0;
+        
+        if (quantity <= 0) {
+          alert('Quantity must be greater than zero');
+          return;
+        }
+        
+        if (quantity > maxQuantity) {
+          alert(`You can only sell up to ${maxQuantity.toFixed(2)} shares`);
+          return;
+        }
+        
+        if (price <= 0) {
+          alert('Price must be greater than zero');
+          return;
+        }
+        
+        console.log(`[Frontend] Selling ${quantity} shares of ${ticker} at ${price}`);
+        
+        // Disable the button to prevent double-clicks
+        confirmSellButton.disabled = true;
+        confirmSellButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Selling...';
+        
+        // Call API to sell shares
+        const response = await fetch('/api/sell', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ticker,
+            quantity,
+            sellPrice: price
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to sell shares: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        console.log('[Frontend] Sell result:', result);
+        
+        // Close the modal
+        sellModal.hide();
+        
+        // Remove the modal from the DOM after it's hidden
+        document.getElementById('sellModal').addEventListener('hidden.bs.modal', function () {
+          this.remove();
+        });
+        
+        // Reload trades and cash balance
+        await Promise.all([loadTrades(), loadCashBalance()]);
+        
+        // Show success message
+        alert(`Successfully sold ${quantity} shares of ${ticker} for ${formatCurrency(quantity * price)}`);
+        
+      } catch (error) {
+        console.error('[Frontend] Error selling shares:', error);
+        alert(`Error: ${error.message}`);
+        
+        // Re-enable the button on error
+        confirmSellButton.disabled = false;
+        confirmSellButton.innerHTML = 'Sell Shares';
+      }
+    });
+    
+    // Clean up when the modal is closed
+    document.getElementById('sellModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
+  } catch (error) {
+    console.error('[Frontend] Error opening sell modal:', error);
+    alert('There was a problem opening the sell dialog. Please try again.');
+  }
 }
 
 // Simplify sellTrade function
