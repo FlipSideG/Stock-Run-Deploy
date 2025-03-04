@@ -8,210 +8,235 @@
   <title>Stock Portfolio Tracker</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <div class="container my-4">
-    <h1 class="text-center mb-4">Stock Portfolio Tracker</h1>
-    
-    <!-- Portfolio Summary -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Portfolio Summary</h4>
-            <button id="refresh-prices" class="btn btn-light btn-sm">
+  <div class="app-container">
+    <header class="app-header">
+      <div class="container py-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <h1 class="app-title mb-0">Stock Portfolio Tracker</h1>
+          <div class="d-flex align-items-center">
+            <span class="market-status-indicator me-3">
+              <i class="bi bi-circle-fill text-success"></i> Market Open
+            </span>
+            <button id="refresh-prices" class="btn btn-primary btn-sm">
               <i class="bi bi-arrow-clockwise me-1"></i> Refresh
             </button>
           </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-3 col-6">
-                <p class="mb-2"><strong>Cash Balance:</strong></p>
-                <h4 id="cash-balance" class="mb-3">$0.00</h4>
-                
-                <p class="mb-2"><strong>Total Invested:</strong></p>
-                <h4 id="total-invested" class="mb-3">$0.00</h4>
+        </div>
+      </div>
+    </header>
+    
+    <main class="container py-4">
+      <!-- Portfolio Summary Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient">
+          <h2 class="section-title">Portfolio Summary</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-3 col-6">
+              <div class="summary-item">
+                <p class="summary-label">Cash Balance</p>
+                <h3 id="cash-balance" class="summary-value">$0.00</h3>
               </div>
-              <div class="col-md-3 col-6">
-                <p class="mb-2"><strong>Current Value:</strong></p>
-                <h4 id="total-value" class="mb-3">$0.00</h4>
-                
-                <p class="mb-2"><strong>Gain/Loss:</strong></p>
-                <h4 class="mb-3">
+              <div class="summary-item mt-3">
+                <p class="summary-label">Total Invested</p>
+                <h3 id="total-invested" class="summary-value">$0.00</h3>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="summary-item">
+                <p class="summary-label">Current Value</p>
+                <h3 id="total-value" class="summary-value">$0.00</h3>
+              </div>
+              <div class="summary-item mt-3">
+                <p class="summary-label">Gain/Loss</p>
+                <h3 class="summary-value">
                   <span id="total-gain-loss">$0.00</span> 
                   <span id="total-gain-loss-percent" class="text-muted fs-6">(0.00%)</span>
-                </h4>
-              </div>
-              <div class="col-md-3 col-6">
-                <p class="mb-2"><strong>Total Portfolio Value:</strong></p>
-                <h4 id="total-portfolio-value" class="mb-3">$0.00</h4>
-              </div>
-              <div class="col-md-3 col-6 text-md-end">
-                <p class="mb-2"><strong>Last Updated:</strong></p>
-                <p class="last-refreshed-time mb-3">Never</p>
+                </h3>
               </div>
             </div>
-            
-            <!-- Cash Management -->
-            <div class="row mt-3">
-              <div class="col-12">
-                <div class="input-group">
-                  <input type="text" id="cash-amount" class="form-control" placeholder="Enter amount">
-                  <button id="add-cash" class="btn btn-success">
-                    <i class="bi bi-plus-circle me-1"></i> Add Cash
-                  </button>
-                  <button id="withdraw-cash" class="btn btn-danger">
-                    <i class="bi bi-dash-circle me-1"></i> Withdraw
+            <div class="col-md-3 col-6">
+              <div class="summary-item">
+                <p class="summary-label">Total Portfolio Value</p>
+                <h3 id="total-portfolio-value" class="summary-value">$0.00</h3>
+              </div>
+            </div>
+            <div class="col-md-3 col-6">
+              <div class="summary-item">
+                <p class="summary-label">Last Updated</p>
+                <p class="last-refreshed-time summary-value-sm">Never</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Cash Management -->
+          <div class="row mt-4">
+            <div class="col-12">
+              <div class="input-group cash-management-group">
+                <input type="text" id="cash-amount" class="form-control" placeholder="Enter amount">
+                <button id="add-cash" class="btn btn-success">
+                  <i class="bi bi-plus-circle me-1"></i> Add Cash
+                </button>
+                <button id="withdraw-cash" class="btn btn-danger">
+                  <i class="bi bi-dash-circle me-1"></i> Withdraw
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row g-4 mb-4">
+        <!-- Portfolio Table Card -->
+        <div class="col-lg-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient">
+              <h2 class="section-title">Portfolio</h2>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover" id="portfolio-table">
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th>Shares</th>
+                      <th class="hide-xs">Avg Cost</th>
+                      <th>Current</th>
+                      <th>Value</th>
+                      <th>Gain/Loss</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="6" class="text-center">Loading...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Add Trade Card -->
+        <div class="col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient">
+              <h2 class="section-title">Add Trade</h2>
+            </div>
+            <div class="card-body">
+              <form id="trade-form">
+                <div class="mb-3">
+                  <label for="ticker" class="form-label">Ticker Symbol</label>
+                  <input type="text" class="form-control" id="ticker" name="ticker" placeholder="e.g., AAPL" required>
+                </div>
+                <div class="mb-3">
+                  <label for="quantity" class="form-label">Quantity</label>
+                  <input type="text" class="form-control" id="quantity" name="quantity" placeholder="Number of shares" required>
+                </div>
+                <div class="mb-3">
+                  <label for="purchase-price" class="form-label">Purchase Price</label>
+                  <input type="text" class="form-control" id="purchase-price" name="purchasePrice" placeholder="Price per share" required>
+                </div>
+                <div class="mb-3">
+                  <label for="purchase-date" class="form-label">Purchase Date</label>
+                  <input type="date" class="form-control" id="purchase-date" name="purchaseDate" required>
+                </div>
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Add Trade
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Portfolio Table Card -->
-    <div class="card mb-4">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-4">Portfolio</h3>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-striped table-hover" id="portfolio-table">
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Shares</th>
-                <th class="hide-xs">Avg Cost</th>
-                <th>Current</th>
-                <th>Value</th>
-                <th>Gain/Loss</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="6" class="text-center">Loading...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Trade Form Card - Second (between Portfolio and Trades) -->
-    <div class="card mb-4">
-      <div class="card-header bg-light">
-        <h3 class="mb-0 fs-4">Add Trade</h3>
-      </div>
-      <div class="card-body">
-        <form id="trade-form">
-          <div class="row g-3">
-            <div class="col-md-3 col-sm-6">
-              <label for="ticker" class="form-label">Ticker Symbol</label>
-              <input type="text" class="form-control" id="ticker" name="ticker" placeholder="e.g., AAPL" required>
-            </div>
-            <div class="col-md-3 col-sm-6">
-              <label for="quantity" class="form-label">Quantity</label>
-              <input type="text" class="form-control" id="quantity" name="quantity" placeholder="Number of shares" required>
-            </div>
-            <div class="col-md-3 col-sm-6">
-              <label for="purchase-price" class="form-label">Purchase Price</label>
-              <input type="text" class="form-control" id="purchase-price" name="purchasePrice" placeholder="Price per share" required>
-            </div>
-            <div class="col-md-3 col-sm-6">
-              <label for="purchase-date" class="form-label">Purchase Date</label>
-              <input type="date" class="form-control" id="purchase-date" name="purchaseDate" required>
-            </div>
-          </div>
-          <div class="mt-3">
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-plus-circle me-1"></i> Add Trade
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-    
-    <!-- Trades Card - Third -->
-    <div class="card mb-4">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-4">Trades</h3>
-        <div>
+      
+      <!-- Trades Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient d-flex justify-content-between align-items-center">
+          <h2 class="section-title mb-0">Trades</h2>
           <button id="reset-button" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-trash me-1"></i> Reset All
           </button>
         </div>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-striped table-hover" id="trades-table">
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Shares</th>
-                <th class="hide-xs">Buy Price</th>
-                <th class="hide-xs">Date</th>
-                <th>Current</th>
-                <th>Gain/Loss</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="7" class="text-center">Loading...</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="trades-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Shares</th>
+                  <th class="hide-xs">Buy Price</th>
+                  <th class="hide-xs">Date</th>
+                  <th>Current</th>
+                  <th>Gain/Loss</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="7" class="text-center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Cash Balance Card - Fourth (at bottom) -->
-    <div class="card mb-4">
-      <div class="card-header bg-light">
-        <h3 class="mb-0 fs-4">Cash Management</h3>
-      </div>
-      <div class="card-body">
-        <div class="row g-4">
-          <div class="col-md-6 col-sm-12">
-            <div class="card h-100">
-              <div class="card-body text-center">
-                <h5 class="card-title">Current Cash Balance</h5>
-                <p class="card-text fs-4 cash-balance-display">$0.00</p>
+      
+      <!-- Cash Management Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient">
+          <h2 class="section-title">Cash Management</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="card h-100 border-0 bg-light">
+                <div class="card-body text-center">
+                  <h5 class="card-title">Current Cash Balance</h5>
+                  <p class="card-text display-6 cash-balance-display">$0.00</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="col-md-6 col-sm-12">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">Add or Withdraw Cash</h5>
-                <div class="input-group mb-3">
-                  <input type="text" id="cash-amount-alt" class="form-control" placeholder="Enter amount">
-                  <button id="add-cash-alt" class="btn btn-success">
-                    <i class="bi bi-plus-circle"></i>
-                  </button>
-                  <button id="withdraw-cash-alt" class="btn btn-danger">
-                    <i class="bi bi-dash-circle"></i>
-                  </button>
+            <div class="col-md-6">
+              <div class="card h-100 border-0 bg-light">
+                <div class="card-body">
+                  <h5 class="card-title">Add or Withdraw Cash</h5>
+                  <div class="input-group mb-3">
+                    <input type="text" id="cash-amount-alt" class="form-control" placeholder="Enter amount">
+                    <button id="add-cash-alt" class="btn btn-success">
+                      <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <button id="withdraw-cash-alt" class="btn btn-danger">
+                      <i class="bi bi-dash-circle"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
     
-    <!-- Reset Button -->
-    <div class="text-center mb-4">
-      <button id="reset-data" class="btn btn-danger">Reset All Data</button>
-    </div>
+    <footer class="app-footer py-3">
+      <div class="container text-center">
+        <button id="reset-data" class="btn btn-danger">Reset All Data</button>
+      </div>
+    </footer>
   </div>
   
   <!-- Sell Modal -->
   <div class="modal fade" id="sellModal" tabindex="-1" aria-labelledby="sellModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="sellModalLabel">Sell Shares</h5>

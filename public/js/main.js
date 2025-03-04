@@ -1,65 +1,154 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // Detect device type
-  detectDeviceType();
-  
-  // Initialize
-  loadCashBalance();
-  loadTrades();
-  setupNumberFormatting();
-  
-  // Event listeners for cash management
-  document.getElementById('add-cash').addEventListener('click', () => handleCashOperation('add'));
-  document.getElementById('withdraw-cash').addEventListener('click', () => handleCashOperation('withdraw'));
-  
-  // Alternative cash management buttons
-  const addCashAlt = document.getElementById('add-cash-alt');
-  const withdrawCashAlt = document.getElementById('withdraw-cash-alt');
-  
-  if (addCashAlt) {
-    addCashAlt.addEventListener('click', () => {
-      const amount = document.getElementById('cash-amount-alt').value;
-      if (amount) {
-        document.getElementById('cash-amount').value = amount;
-        handleCashOperation('add');
-      }
-    });
-  }
-  
-  if (withdrawCashAlt) {
-    withdrawCashAlt.addEventListener('click', () => {
-      const amount = document.getElementById('cash-amount-alt').value;
-      if (amount) {
-        document.getElementById('cash-amount').value = amount;
-        handleCashOperation('withdraw');
-      }
-    });
-  }
-  
-  // Trade form and other event listeners
-  document.getElementById('trade-form').addEventListener('submit', addTrade);
-  document.getElementById('confirm-sell').addEventListener('click', sellTrade);
-  
-  // Set up Bootstrap modal
-  const sellModal = new bootstrap.Modal(document.getElementById('sellModal'));
-  window.sellModal = sellModal;
-  
-  // Add event listener for reset button
-  document.getElementById('reset-button').addEventListener('click', resetAllData);
-  
-  // Add refresh prices button event listener
-  const refreshPricesButton = document.getElementById('refresh-prices');
-  if (refreshPricesButton) {
-    refreshPricesButton.addEventListener('click', refreshPrices);
-  }
-  
-  // Handle window resize events for responsive adjustments
-  window.addEventListener('resize', function() {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    console.log('[Frontend] DOM loaded, initializing app...');
+    
+    // Detect device type first
     detectDeviceType();
+    
+    // Adjust UI for device type
     adjustUIForDeviceType();
-  });
-  
-  // Initial UI adjustment
-  adjustUIForDeviceType();
+    
+    // Check market status
+    await checkMarketStatus().catch(err => {
+      console.error('[Frontend] Error checking market status:', err);
+      // Continue with default market status
+    });
+    
+    // Load initial data with error handling
+    try {
+      await loadCashBalance();
+    } catch (error) {
+      console.error('[Frontend] Error loading cash balance:', error);
+      // Continue with default cash balance
+      updateAllCashDisplays(0);
+    }
+    
+    try {
+      await loadTrades();
+    } catch (error) {
+      console.error('[Frontend] Error loading trades:', error);
+      // Show error message in tables
+      const tables = ['trades-table', 'portfolio-table'];
+      tables.forEach(tableId => {
+        const table = document.getElementById(tableId);
+        if (table) {
+          const tbody = table.querySelector('tbody');
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
+          }
+        }
+      });
+    }
+    
+    // Set up number formatting for all numeric inputs
+    setupNumberFormatting('cash-amount', true, 2);       // Cash amount (dollars and cents)
+    setupNumberFormatting('cash-amount-alt', true, 2);   // Alternative cash amount
+    setupNumberFormatting('quantity', true, 2);          // Quantity (can have fractional shares)
+    setupNumberFormatting('purchase-price', true, 2);    // Purchase price (dollars and cents)
+    
+    // Set up event listeners for the trade form
+    const tradeForm = document.getElementById('trade-form');
+    if (tradeForm) {
+      console.log('[Frontend] Setting up trade form submit listener');
+      tradeForm.addEventListener('submit', addTrade);
+    } else {
+      console.warn('[Frontend] Trade form not found');
+    }
+    
+    // Set up event listeners for cash buttons
+    const addCashButton = document.getElementById('add-cash');
+    const withdrawCashButton = document.getElementById('withdraw-cash');
+    
+    if (addCashButton) {
+      console.log('[Frontend] Setting up add cash button listener');
+      addCashButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        handleCashOperation('add');
+      });
+    }
+    
+    if (withdrawCashButton) {
+      console.log('[Frontend] Setting up withdraw cash button listener');
+      withdrawCashButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        handleCashOperation('withdraw');
+      });
+    }
+    
+    // Set up alternative cash buttons
+    const addCashAltButton = document.getElementById('add-cash-alt');
+    const withdrawCashAltButton = document.getElementById('withdraw-cash-alt');
+    
+    if (addCashAltButton) {
+      addCashAltButton.addEventListener('click', function() {
+        const amount = document.getElementById('cash-amount-alt').value;
+        if (amount) {
+          document.getElementById('cash-amount').value = amount;
+          handleCashOperation('add');
+        }
+      });
+    }
+    
+    if (withdrawCashAltButton) {
+      withdrawCashAltButton.addEventListener('click', function() {
+        const amount = document.getElementById('cash-amount-alt').value;
+        if (amount) {
+          document.getElementById('cash-amount').value = amount;
+          handleCashOperation('withdraw');
+        }
+      });
+    }
+    
+    // Set up refresh prices button
+    const refreshPricesButton = document.getElementById('refresh-prices');
+    if (refreshPricesButton) {
+      refreshPricesButton.addEventListener('click', function() {
+        refreshPrices(true);
+      });
+    }
+    
+    // Set up reset button
+    const resetButton = document.getElementById('reset-button');
+    if (resetButton) {
+      resetButton.addEventListener('click', resetAllData);
+    }
+    
+    // Set default date for purchase date input
+    const purchaseDateInput = document.getElementById('purchase-date');
+    if (purchaseDateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      purchaseDateInput.value = today;
+    } else {
+      console.warn('[Frontend] Purchase date input not found');
+    }
+    
+    // Update last refreshed time initially
+    updateLastRefreshedTime();
+    
+    // Handle window resize events
+    window.addEventListener('resize', function() {
+      detectDeviceType();
+      adjustUIForDeviceType();
+    });
+    
+    // Set initial styles for card animations
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    });
+    
+    // Trigger animations after a short delay
+    setTimeout(() => {
+      animateCards();
+    }, 100);
+    
+    console.log('[Frontend] App initialization complete');
+  } catch (error) {
+    console.error('[Frontend] Critical error during app initialization:', error);
+    alert('There was a problem loading the application. Please try refreshing the page.');
+  }
 });
 
 // Detect device type and add appropriate class to body
@@ -132,6 +221,37 @@ function adjustUIForDeviceType() {
       refreshBtn.innerHTML = refreshBtn.dataset.originalText;
     }
   }
+  
+  // Add subtle animations to cards
+  animateCards();
+  
+  // Enhance tables with hover effects
+  enhanceTables();
+}
+
+// Function to add subtle animations to cards
+function animateCards() {
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card, index) => {
+    // Add a slight delay to each card for a staggered effect
+    setTimeout(() => {
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, index * 100);
+  });
+}
+
+// Function to enhance tables with hover effects
+function enhanceTables() {
+  const tables = document.querySelectorAll('.table');
+  tables.forEach(table => {
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      row.addEventListener('mouseenter', () => {
+        row.style.transition = 'background-color 0.2s ease';
+      });
+    });
+  });
 }
 
 // Utility function to format currency values
@@ -513,146 +633,101 @@ function updateAllCashDisplays(balance) {
   }
 }
 
-// Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
+// Function to update portfolio summary with animations
+function updatePortfolioSummary(totalInvested, totalValue, totalGainLoss) {
   try {
-    console.log('[Frontend] DOM loaded, initializing app...');
+    console.log(`[Frontend] Updating portfolio summary: Invested=${totalInvested}, Value=${totalValue}, Gain/Loss=${totalGainLoss}`);
     
-    // Detect device type first
-    detectDeviceType();
+    // Get cash balance
+    const cashBalanceElement = document.getElementById('cash-balance');
+    let cashBalance = 0;
     
-    // Adjust UI for device type
-    adjustUIForDeviceType();
-    
-    // Check market status
-    await checkMarketStatus().catch(err => {
-      console.error('[Frontend] Error checking market status:', err);
-      // Continue with default market status
-    });
-    
-    // Load initial data with error handling
-    try {
-      await loadCashBalance();
-    } catch (error) {
-      console.error('[Frontend] Error loading cash balance:', error);
-      // Continue with default cash balance
-      updateAllCashDisplays(0);
+    if (cashBalanceElement) {
+      const cashBalanceText = cashBalanceElement.textContent.replace(/[^0-9.-]+/g, '');
+      cashBalance = parseFloat(cashBalanceText) || 0;
     }
     
-    try {
-      await loadTrades();
-    } catch (error) {
-      console.error('[Frontend] Error loading trades:', error);
-      // Show error message in tables
-      const tables = ['trades-table', 'portfolio-table'];
-      tables.forEach(tableId => {
-        const table = document.getElementById(tableId);
-        if (table) {
-          const tbody = table.querySelector('tbody');
-          if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
-          }
-        }
-      });
+    console.log(`[Frontend] Cash balance: ${cashBalance}`);
+    
+    // Calculate total portfolio value (cash + investments)
+    const totalPortfolioValue = cashBalance + totalValue;
+    
+    // Update summary elements with animations
+    animateValue('total-invested', totalInvested);
+    animateValue('total-value', totalValue);
+    animateValue('total-gain-loss', totalGainLoss);
+    animateValue('total-portfolio-value', totalPortfolioValue);
+    
+    // Update gain/loss percent
+    const totalGainLossPercentElement = document.getElementById('total-gain-loss-percent');
+    if (totalGainLossPercentElement) {
+      let gainLossPercent = 0;
+      if (totalInvested > 0) {
+        gainLossPercent = (totalGainLoss / totalInvested) * 100;
+      }
+      totalGainLossPercentElement.textContent = `(${gainLossPercent.toFixed(2)}%)`;
+      totalGainLossPercentElement.classList.remove('text-success', 'text-danger');
+      totalGainLossPercentElement.classList.add(gainLossPercent >= 0 ? 'text-success' : 'text-danger');
     }
     
-    // Set up number formatting for all numeric inputs
-    setupNumberFormatting('cash-amount', true, 2);       // Cash amount (dollars and cents)
-    setupNumberFormatting('cash-amount-alt', true, 2);   // Alternative cash amount
-    setupNumberFormatting('quantity', true, 2);          // Quantity (can have fractional shares)
-    setupNumberFormatting('purchase-price', true, 2);    // Purchase price (dollars and cents)
-    
-    // Set up event listeners for the trade form
-    const tradeForm = document.getElementById('trade-form');
-    if (tradeForm) {
-      console.log('[Frontend] Setting up trade form submit listener');
-      tradeForm.addEventListener('submit', addTrade);
-    } else {
-      console.warn('[Frontend] Trade form not found');
-    }
-    
-    // Set up event listeners for cash buttons
-    const addCashButton = document.getElementById('add-cash');
-    const withdrawCashButton = document.getElementById('withdraw-cash');
-    
-    if (addCashButton) {
-      console.log('[Frontend] Setting up add cash button listener');
-      addCashButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        handleCashOperation('add');
-      });
-    }
-    
-    if (withdrawCashButton) {
-      console.log('[Frontend] Setting up withdraw cash button listener');
-      withdrawCashButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        handleCashOperation('withdraw');
-      });
-    }
-    
-    // Set up alternative cash buttons
-    const addCashAltButton = document.getElementById('add-cash-alt');
-    const withdrawCashAltButton = document.getElementById('withdraw-cash-alt');
-    
-    if (addCashAltButton) {
-      addCashAltButton.addEventListener('click', function() {
-        const amount = document.getElementById('cash-amount-alt').value;
-        if (amount) {
-          document.getElementById('cash-amount').value = amount;
-          handleCashOperation('add');
-        }
-      });
-    }
-    
-    if (withdrawCashAltButton) {
-      withdrawCashAltButton.addEventListener('click', function() {
-        const amount = document.getElementById('cash-amount-alt').value;
-        if (amount) {
-          document.getElementById('cash-amount').value = amount;
-          handleCashOperation('withdraw');
-        }
-      });
-    }
-    
-    // Set up refresh prices button
-    const refreshPricesButton = document.getElementById('refresh-prices');
-    if (refreshPricesButton) {
-      refreshPricesButton.addEventListener('click', function() {
-        refreshPrices(true);
-      });
-    }
-    
-    // Set up reset button
-    const resetButton = document.getElementById('reset-button');
-    if (resetButton) {
-      resetButton.addEventListener('click', resetAllData);
-    }
-    
-    // Set default date for purchase date input
-    const purchaseDateInput = document.getElementById('purchase-date');
-    if (purchaseDateInput) {
-      const today = new Date().toISOString().split('T')[0];
-      purchaseDateInput.value = today;
-    } else {
-      console.warn('[Frontend] Purchase date input not found');
-    }
-    
-    // Update last refreshed time initially
-    updateLastRefreshedTime();
-    
-    // Handle window resize events
-    window.addEventListener('resize', function() {
-      detectDeviceType();
-      adjustUIForDeviceType();
-    });
-    
-    console.log('[Frontend] App initialization complete');
+    console.log(`[Frontend] Portfolio summary updated. Total portfolio value: ${totalPortfolioValue}`);
   } catch (error) {
-    console.error('[Frontend] Critical error during app initialization:', error);
-    alert('There was a problem loading the application. Please try refreshing the page.');
+    console.error('[Frontend] Error updating portfolio summary:', error);
   }
-});
+}
+
+// Function to animate value changes
+function animateValue(elementId, newValue) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  
+  // Get current value
+  const currentValueText = element.textContent.replace(/[^0-9.-]+/g, '');
+  const currentValue = parseFloat(currentValueText) || 0;
+  
+  // If values are close, don't animate
+  if (Math.abs(currentValue - newValue) < 0.01) {
+    element.textContent = formatCurrency(newValue);
+    return;
+  }
+  
+  // Add highlight effect
+  element.classList.add('highlight-change');
+  
+  // Set the new value
+  element.textContent = formatCurrency(newValue);
+  
+  // Add appropriate color class
+  if (elementId === 'total-gain-loss') {
+    element.classList.remove('text-success', 'text-danger');
+    element.classList.add(newValue >= 0 ? 'text-success' : 'text-danger');
+  }
+  
+  // Remove highlight after animation completes
+  setTimeout(() => {
+    element.classList.remove('highlight-change');
+  }, 1000);
+}
+
+// Function to update the last refreshed time with animation
+function updateLastRefreshedTime() {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString();
+  
+  const elements = document.querySelectorAll('.last-refreshed-time');
+  elements.forEach(element => {
+    // Add animation class
+    element.classList.add('highlight-change');
+    
+    // Update the time
+    element.textContent = timeString;
+    
+    // Remove animation class after animation completes
+    setTimeout(() => {
+      element.classList.remove('highlight-change');
+    }, 1000);
+  });
+}
 
 // Function to handle cash operations (add/withdraw)
 async function handleCashOperation(operation) {
@@ -1460,76 +1535,5 @@ async function refreshPrices(showAlert = true) {
       refreshButton.disabled = false;
       refreshButton.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Prices';
     }
-  }
-}
-
-// Function to update the last refreshed time
-function updateLastRefreshedTime() {
-  const now = new Date();
-  const timeString = now.toLocaleTimeString();
-  
-  const elements = document.querySelectorAll('.last-refreshed-time');
-  elements.forEach(element => {
-    element.textContent = timeString;
-  });
-}
-
-// Function to update portfolio summary
-function updatePortfolioSummary(totalInvested, totalValue, totalGainLoss) {
-  try {
-    console.log(`[Frontend] Updating portfolio summary: Invested=${totalInvested}, Value=${totalValue}, Gain/Loss=${totalGainLoss}`);
-    
-    // Get cash balance
-    const cashBalanceElement = document.getElementById('cash-balance');
-    let cashBalance = 0;
-    
-    if (cashBalanceElement) {
-      const cashBalanceText = cashBalanceElement.textContent.replace(/[^0-9.-]+/g, '');
-      cashBalance = parseFloat(cashBalanceText) || 0;
-    }
-    
-    console.log(`[Frontend] Cash balance: ${cashBalance}`);
-    
-    // Calculate total portfolio value (cash + investments)
-    const totalPortfolioValue = cashBalance + totalValue;
-    
-    // Update summary elements
-    const totalInvestedElement = document.getElementById('total-invested');
-    const totalValueElement = document.getElementById('total-value');
-    const totalGainLossElement = document.getElementById('total-gain-loss');
-    const totalGainLossPercentElement = document.getElementById('total-gain-loss-percent');
-    const totalPortfolioValueElement = document.getElementById('total-portfolio-value');
-    
-    if (totalInvestedElement) {
-      totalInvestedElement.textContent = formatCurrency(totalInvested);
-    }
-    
-    if (totalValueElement) {
-      totalValueElement.textContent = formatCurrency(totalValue);
-    }
-    
-    if (totalGainLossElement) {
-      totalGainLossElement.textContent = formatCurrency(totalGainLoss);
-      totalGainLossElement.classList.remove('text-success', 'text-danger');
-      totalGainLossElement.classList.add(totalGainLoss >= 0 ? 'text-success' : 'text-danger');
-    }
-    
-    if (totalGainLossPercentElement) {
-      let gainLossPercent = 0;
-      if (totalInvested > 0) {
-        gainLossPercent = (totalGainLoss / totalInvested) * 100;
-      }
-      totalGainLossPercentElement.textContent = `(${gainLossPercent.toFixed(2)}%)`;
-      totalGainLossPercentElement.classList.remove('text-success', 'text-danger');
-      totalGainLossPercentElement.classList.add(gainLossPercent >= 0 ? 'text-success' : 'text-danger');
-    }
-    
-    if (totalPortfolioValueElement) {
-      totalPortfolioValueElement.textContent = formatCurrency(totalPortfolioValue);
-    }
-    
-    console.log(`[Frontend] Portfolio summary updated. Total portfolio value: ${totalPortfolioValue}`);
-  } catch (error) {
-    console.error('[Frontend] Error updating portfolio summary:', error);
   }
 } 
