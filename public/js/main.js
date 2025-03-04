@@ -1,12 +1,41 @@
 document.addEventListener('DOMContentLoaded', function() {
+  // Detect device type
+  detectDeviceType();
+  
   // Initialize
   loadCashBalance();
   loadTrades();
   setupNumberFormatting();
   
-  // Event listeners
+  // Event listeners for cash management
   document.getElementById('add-cash').addEventListener('click', () => updateCash(true));
   document.getElementById('withdraw-cash').addEventListener('click', () => updateCash(false));
+  
+  // Alternative cash management buttons
+  const addCashAlt = document.getElementById('add-cash-alt');
+  const withdrawCashAlt = document.getElementById('withdraw-cash-alt');
+  
+  if (addCashAlt) {
+    addCashAlt.addEventListener('click', () => {
+      const amount = document.getElementById('cash-amount-alt').value;
+      if (amount) {
+        document.getElementById('cash-amount').value = amount;
+        updateCash(true);
+      }
+    });
+  }
+  
+  if (withdrawCashAlt) {
+    withdrawCashAlt.addEventListener('click', () => {
+      const amount = document.getElementById('cash-amount-alt').value;
+      if (amount) {
+        document.getElementById('cash-amount').value = amount;
+        updateCash(false);
+      }
+    });
+  }
+  
+  // Trade form and other event listeners
   document.getElementById('trade-form').addEventListener('submit', addTrade);
   document.getElementById('confirm-sell').addEventListener('click', sellTrade);
   
@@ -22,7 +51,77 @@ document.addEventListener('DOMContentLoaded', function() {
   if (refreshPricesButton) {
     refreshPricesButton.addEventListener('click', refreshPrices);
   }
+  
+  // Handle window resize events for responsive adjustments
+  window.addEventListener('resize', function() {
+    detectDeviceType();
+    adjustUIForDeviceType();
+  });
+  
+  // Initial UI adjustment
+  adjustUIForDeviceType();
 });
+
+// Detect device type and add appropriate class to body
+function detectDeviceType() {
+  const isMobile = window.innerWidth < 768 || 
+                  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    document.body.classList.add('mobile-device');
+    console.log('[Frontend] Mobile device detected');
+  } else {
+    document.body.classList.remove('mobile-device');
+    console.log('[Frontend] Desktop device detected');
+  }
+  
+  return isMobile;
+}
+
+// Adjust UI elements based on device type
+function adjustUIForDeviceType() {
+  const isMobile = document.body.classList.contains('mobile-device');
+  
+  // Make all tables responsive
+  const tables = document.querySelectorAll('table');
+  tables.forEach(table => {
+    // Ensure table is wrapped in a responsive div
+    if (!table.parentElement.classList.contains('table-responsive')) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-responsive';
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    }
+  });
+  
+  // Adjust column visibility for very small screens
+  if (window.innerWidth < 576) {
+    document.querySelectorAll('.hide-xs').forEach(el => {
+      el.style.display = 'none';
+    });
+  } else {
+    document.querySelectorAll('.hide-xs').forEach(el => {
+      el.style.display = '';
+    });
+  }
+  
+  // Adjust button text on mobile (use icons instead of text where appropriate)
+  if (isMobile) {
+    // Example: Change "Refresh Prices" to just an icon
+    const refreshBtn = document.getElementById('refresh-prices');
+    if (refreshBtn && !refreshBtn.dataset.originalText) {
+      refreshBtn.dataset.originalText = refreshBtn.innerHTML;
+      refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+      refreshBtn.title = 'Refresh Prices';
+    }
+  } else {
+    // Restore original button text on desktop
+    const refreshBtn = document.getElementById('refresh-prices');
+    if (refreshBtn && refreshBtn.dataset.originalText) {
+      refreshBtn.innerHTML = refreshBtn.dataset.originalText;
+    }
+  }
+}
 
 // Utility function to format currency values
 function formatCurrency(value) {
