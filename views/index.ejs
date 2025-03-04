@@ -75,86 +75,67 @@
               </div>
             </div>
           </div>
-          
-          <!-- Cash Management -->
-          <div class="row mt-4">
-            <div class="col-12">
-              <div class="input-group cash-management-group">
-                <input type="text" id="cash-amount" class="form-control" placeholder="Enter amount">
-                <button id="add-cash" class="btn btn-success">
-                  <i class="bi bi-plus-circle me-1"></i> Add Cash
-                </button>
-                <button id="withdraw-cash" class="btn btn-danger">
-                  <i class="bi bi-dash-circle me-1"></i> Withdraw
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       
-      <div class="row g-4 mb-4">
-        <!-- Portfolio Table Card -->
-        <div class="col-lg-8">
-          <div class="card shadow-sm h-100">
-            <div class="card-header bg-gradient">
-              <h2 class="section-title">Portfolio</h2>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover" id="portfolio-table">
-                  <thead>
-                    <tr>
-                      <th>Ticker</th>
-                      <th>Shares</th>
-                      <th class="hide-xs">Avg Cost</th>
-                      <th>Current</th>
-                      <th>Value</th>
-                      <th>Gain/Loss</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colspan="6" class="text-center">Loading...</td>
-                    </tr>
-                  </tbody>
-                </table>
+      <!-- Add Trade Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient">
+          <h2 class="section-title">Add Trade</h2>
+        </div>
+        <div class="card-body">
+          <form id="trade-form">
+            <div class="row g-3">
+              <div class="col-md-3 col-sm-6">
+                <label for="ticker" class="form-label">Ticker Symbol</label>
+                <input type="text" class="form-control" id="ticker" name="ticker" placeholder="e.g., AAPL" required>
+              </div>
+              <div class="col-md-3 col-sm-6">
+                <label for="quantity" class="form-label">Quantity</label>
+                <input type="text" class="form-control" id="quantity" name="quantity" placeholder="Number of shares" required>
+              </div>
+              <div class="col-md-3 col-sm-6">
+                <label for="purchase-price" class="form-label">Purchase Price</label>
+                <input type="text" class="form-control" id="purchase-price" name="purchasePrice" placeholder="Price per share" required>
+              </div>
+              <div class="col-md-3 col-sm-6">
+                <label for="purchase-date" class="form-label">Purchase Date</label>
+                <input type="date" class="form-control" id="purchase-date" name="purchaseDate" required>
               </div>
             </div>
-          </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Add Trade
+              </button>
+            </div>
+          </form>
         </div>
-        
-        <!-- Add Trade Card -->
-        <div class="col-lg-4">
-          <div class="card shadow-sm h-100">
-            <div class="card-header bg-gradient">
-              <h2 class="section-title">Add Trade</h2>
-            </div>
-            <div class="card-body">
-              <form id="trade-form">
-                <div class="mb-3">
-                  <label for="ticker" class="form-label">Ticker Symbol</label>
-                  <input type="text" class="form-control" id="ticker" name="ticker" placeholder="e.g., AAPL" required>
-                </div>
-                <div class="mb-3">
-                  <label for="quantity" class="form-label">Quantity</label>
-                  <input type="text" class="form-control" id="quantity" name="quantity" placeholder="Number of shares" required>
-                </div>
-                <div class="mb-3">
-                  <label for="purchase-price" class="form-label">Purchase Price</label>
-                  <input type="text" class="form-control" id="purchase-price" name="purchasePrice" placeholder="Price per share" required>
-                </div>
-                <div class="mb-3">
-                  <label for="purchase-date" class="form-label">Purchase Date</label>
-                  <input type="date" class="form-control" id="purchase-date" name="purchaseDate" required>
-                </div>
-                <div class="d-grid">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-plus-circle me-1"></i> Add Trade
-                  </button>
-                </div>
-              </form>
-            </div>
+      </div>
+      
+      <!-- Portfolio Table Card -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient">
+          <h2 class="section-title">Portfolio</h2>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="portfolio-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Shares</th>
+                  <th class="hide-xs">Avg Cost</th>
+                  <th>Current</th>
+                  <th>Value</th>
+                  <th>Gain/Loss</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="6" class="text-center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -844,70 +844,68 @@ router.get('/market-status', async (req, res) => {
   try {
     console.log('[API] Checking US market status...');
     
-    // Get current time
+    // Get current time in ET
     const now = new Date();
-    
-    // Create mock market data with realistic times
-    // Market opens at 9:30 AM ET and closes at 4:00 PM ET
-    const currentDate = new Date();
+    const options = { timeZone: 'America/New_York' };
+    const etDate = new Date(now.toLocaleString('en-US', options));
     
     // Create opening time (9:30 AM ET today)
-    const openDate = new Date(currentDate);
+    const openDate = new Date(etDate);
     openDate.setHours(9, 30, 0, 0); // 9:30 AM
     
     // Create closing time (4:00 PM ET today)
-    const closeDate = new Date(currentDate);
+    const closeDate = new Date(etDate);
     closeDate.setHours(16, 0, 0, 0); // 4:00 PM
     
-    const usMarketStatus = {
-      "exchange": "US",
-      "isOpen": true,
-      "holiday": null,
-      "currentTime": Math.floor(now.getTime() / 1000),
-      "openAt": Math.floor(openDate.getTime() / 1000),
-      "closeAt": Math.floor(closeDate.getTime() / 1000)
-    };
+    // Check if it's a weekend
+    const dayOfWeek = etDate.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+    
+    // Check if market is open (between 9:30 AM and 4:00 PM ET, Monday-Friday)
+    const isOpen = !isWeekend && etDate >= openDate && etDate <= closeDate;
+    
+    console.log(`[API] Current ET time: ${etDate.toLocaleTimeString()}`);
+    console.log(`[API] Day of week: ${dayOfWeek} (${isWeekend ? 'Weekend' : 'Weekday'})`);
+    console.log(`[API] Market hours: ${openDate.toLocaleTimeString()} - ${closeDate.toLocaleTimeString()}`);
+    console.log(`[API] Market is ${isOpen ? 'OPEN' : 'CLOSED'}`);
     
     // Format timestamps for display
     const openTime = openDate.toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
     
     const closeTime = closeDate.toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
     
     // Current time in ET
-    const currentTimeET = now.toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
+    const currentTimeET = etDate.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
     
-    const currentDateET = now.toLocaleDateString('en-US', {
-      timeZone: 'America/New_York',
+    const currentDateET = etDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
     
-    // Create response with fixed isOpen value
+    // Create response with accurate isOpen value
     const response = {
-      isOpen: true, // Explicitly set to true
+      isOpen: isOpen,
       exchange: "US",
       holiday: null,
       currentTimeET,
       currentDateET,
       openTimeET: openTime,
-      closeTimeET: closeTime
+      closeTimeET: closeTime,
+      nextOpenDay: isWeekend ? (dayOfWeek === 0 ? 'Monday' : 'Monday') : 'Today'
     };
     
     console.log('[API] US market status response:', response);
@@ -917,19 +915,29 @@ router.get('/market-status', async (req, res) => {
   } catch (err) {
     console.error('[API] Error checking market status:', err);
     
-    // Even on error, return a valid response with isOpen=true
+    // On error, return a response with isOpen based on current time
+    const now = new Date();
+    const options = { timeZone: 'America/New_York' };
+    const etDate = new Date(now.toLocaleString('en-US', options));
+    const dayOfWeek = etDate.getDay();
+    const hour = etDate.getHours();
+    const minute = etDate.getMinutes();
+    
+    // Simple check for market hours
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isMarketHours = hour > 9 || (hour === 9 && minute >= 30) && hour < 16;
+    const isOpen = !isWeekend && isMarketHours;
+    
     res.json({
-      isOpen: true,
+      isOpen: isOpen,
       exchange: "US",
       holiday: null,
-      currentTimeET: new Date().toLocaleTimeString('en-US', { 
-        timeZone: 'America/New_York',
+      currentTimeET: etDate.toLocaleTimeString('en-US', { 
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
       }),
-      currentDateET: new Date().toLocaleDateString('en-US', { 
-        timeZone: 'America/New_York',
+      currentDateET: etDate.toLocaleDateString('en-US', { 
         weekday: 'long',
         year: 'numeric',
         month: 'long',

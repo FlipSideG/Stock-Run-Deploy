@@ -1334,6 +1334,11 @@ async function checkMarketStatus() {
     console.log('[Frontend] Checking market status...');
     
     const response = await fetch('/api/market-status');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch market status: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
     
     console.log('[Frontend] Market status response:', data);
@@ -1343,7 +1348,8 @@ async function checkMarketStatus() {
     
     // Ensure isOpen is a boolean
     if (typeof marketStatus.isOpen !== 'boolean') {
-      marketStatus.isOpen = true; // Default to open if not boolean
+      console.warn('[Frontend] Market isOpen status is not a boolean, defaulting to false');
+      marketStatus.isOpen = false;
     }
     
     console.log(`[Frontend] Market is ${marketStatus.isOpen ? 'OPEN' : 'CLOSED'}`);
@@ -1351,21 +1357,22 @@ async function checkMarketStatus() {
     // Update market status indicators
     updateMarketStatusIndicators();
     
-    return marketStatus.isOpen;
+    return marketStatus;
   } catch (error) {
     console.error('[Frontend] Error checking market status:', error);
     
-    // Default to open on error
+    // Default to closed on error to be safe
     marketStatus = {
-      isOpen: true,
+      isOpen: false,
       exchange: "US",
       holiday: null,
       currentTimeET: new Date().toLocaleTimeString(),
-      currentDateET: new Date().toLocaleDateString()
+      currentDateET: new Date().toLocaleDateString(),
+      error: error.message
     };
     
     updateMarketStatusIndicators();
-    return true;
+    return marketStatus;
   }
 }
 
@@ -1379,16 +1386,35 @@ function updateMarketStatusIndicators() {
     // Remove existing status classes
     indicator.classList.remove('market-open', 'market-closed', 'market-unknown');
     
-    // Always show as open
-    indicator.classList.add('market-open');
-    let statusText = `<i class="bi bi-circle-fill text-success"></i> Market Open`;
-    
-    // Add closing time if available
-    if (marketStatus.closeTimeET) {
-      statusText += ` (Closes: ${marketStatus.closeTimeET} ET)`;
+    // Add appropriate class based on market status
+    if (marketStatus.isOpen === true) {
+      indicator.classList.add('market-open');
+      let statusText = `<i class="bi bi-circle-fill text-success"></i> Market Open`;
+      
+      // Add closing time if available
+      if (marketStatus.closeTimeET) {
+        statusText += ` (Closes: ${marketStatus.closeTimeET} ET)`;
+      }
+      
+      indicator.innerHTML = statusText;
+    } else if (marketStatus.isOpen === false) {
+      indicator.classList.add('market-closed');
+      let statusText = `<i class="bi bi-circle-fill text-danger"></i> Market Closed`;
+      
+      // Add next opening info if available
+      if (marketStatus.openTimeET) {
+        if (marketStatus.nextOpenDay && marketStatus.nextOpenDay !== 'Today') {
+          statusText += ` (Opens: ${marketStatus.nextOpenDay} ${marketStatus.openTimeET} ET)`;
+        } else {
+          statusText += ` (Opens: ${marketStatus.openTimeET} ET)`;
+        }
+      }
+      
+      indicator.innerHTML = statusText;
+    } else {
+      indicator.classList.add('market-unknown');
+      indicator.innerHTML = `<i class="bi bi-circle-fill text-warning"></i> Market Status Unknown`;
     }
-    
-    indicator.innerHTML = statusText;
   });
   
   // Update current time display
@@ -1446,8 +1472,8 @@ function startAutoRefresh() {
       }
 
       // Check if market is closed before refreshing
-      const marketStatus = await checkMarketStatus();
-      if (!marketStatus.isOpen) {
+      const marketStatusResult = await checkMarketStatus();
+      if (!marketStatusResult.isOpen) {
         console.log('[Frontend] Market is closed, skipping auto-refresh');
         return;
       }
